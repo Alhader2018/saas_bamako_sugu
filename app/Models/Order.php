@@ -11,7 +11,9 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'order_number',
+        'tracking_token',
         'customer_first_name',
         'customer_last_name',
         'customer_phone',
@@ -40,6 +42,11 @@ class Order extends Model
         'discount' => 'integer',
         'total' => 'integer',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function items(): HasMany
     {

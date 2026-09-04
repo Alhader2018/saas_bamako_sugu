@@ -25,6 +25,15 @@ class OrangeMoneyController extends Controller
         }
 
         if ($order) {
+            // Protection IDOR : vérifier que la commande appartient à l'acheteur ou à la session en cours
+            $isOwner = auth()->check() && (int) auth()->id() === (int) $order->user_id;
+            $hasSessionAccess = session()->get('accessible_order_tokens.' . $order->order_number) === $order->tracking_token;
+            $isStaff = auth()->check() && auth()->user()->isStaff();
+
+            if (!$isOwner && !$hasSessionAccess && !$isStaff) {
+                abort(403, 'Vous n\'avez pas l\'autorisation de consulter cette commande.');
+            }
+
             // Tenter de vérifier le statut auprès de l'API Orange Money
             try {
                 if (config('services.orange_money.client_id')) {
@@ -49,7 +58,7 @@ class OrangeMoneyController extends Controller
             ]);
         }
 
-        return redirect()->route('home')->with('info', 'Commande terminée.');
+        return redirect()->route('home')->with('info', 'Commande introuvable ou terminée.');
     }
 
     public function cancel(Request $request)
@@ -62,9 +71,15 @@ class OrangeMoneyController extends Controller
                 ->first();
 
             if ($order) {
-                $order->update([
-                    'payment_status' => 'cancelled',
-                ]);
+                // Protection IDOR
+                $isOwner = auth()->check() && (int) auth()->id() === (int) $order->user_id;
+                $hasSessionAccess = session()->get('accessible_order_tokens.' . $order->order_number) === $order->tracking_token;
+                
+                if ($isOwner || $hasSessionAccess || (auth()->check() && auth()->user()->isStaff())) {
+                    if ($order->payment_status !== 'paid') {
+                        $order->update(['payment_status' => 'cancelled']);
+                    }
+                }
             }
         }
 
@@ -73,7 +88,13 @@ class OrangeMoneyController extends Controller
 
     public function notif(Request $request)
     {
-        Log::info('IPN Orange Money reçu', $request->all());
+        // Journalisation assainie (sanitizing logs)
+        Log::info('IPN Orange Money reçu', [
+            'status' => $request->input('status'),
+            'txnid' => $request->input('txnid'),
+            'order_id' => $request->input('order_id'),
+            'ip' => $request->ip(),
+        ]);
 
         $notifToken = $request->input('notif_token');
         $status = strtoupper(trim((string) $request->input('status', '')));
@@ -95,6 +116,11 @@ class OrangeMoneyController extends Controller
         }
 
         if ($order) {
+            // Idempotence : Si déjà marqué payé, acquitter immédiatement sans effets secondaires
+            if ($order->payment_status === 'paid' && $status === 'SUCCESS') {
+                return response()->json(['status' => 'already_processed', 'order_id' => $order->order_number], 200);
+            }
+
             if ($status === 'SUCCESS') {
                 $order->update([
                     'payment_status' => 'paid',
@@ -110,7 +136,11 @@ class OrangeMoneyController extends Controller
             return response()->json(['status' => 'acknowledged', 'order_id' => $order->order_number], 200);
         }
 
-        Log::warning('IPN Orange Money: Aucune commande trouvée pour la notification.', $request->all());
+        Log::warning('IPN Orange Money: Aucune commande correspondante trouvée.', [
+            'order_id' => $orderId,
+            'ip' => $request->ip(),
+        ]);
+
         return response()->json(['status' => 'order_not_found'], 404);
     }
 }

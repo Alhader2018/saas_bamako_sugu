@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\User;
 use App\Services\CartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -61,7 +62,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_dashboard_loads_with_kpi_and_orders(): void
     {
-        $response = $this->get('/admin');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin');
 
         $response->assertStatus(200);
         $response->assertSee('Tableau de bord');
@@ -71,7 +73,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_orders_index_loads_with_woocommerce_tabs_and_filters(): void
     {
-        $response = $this->get('/admin/commandes');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/commandes');
 
         $response->assertStatus(200);
         $response->assertSee('Commandes');
@@ -81,10 +84,11 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_order_detail_loads_successfully(): void
     {
+        $admin = User::where('role', 'super_admin')->first();
         $order = \App\Models\Order::first();
         $this->assertNotNull($order);
 
-        $response = $this->get('/admin/commandes/' . $order->id);
+        $response = $this->actingAs($admin)->get('/admin/commandes/' . $order->id);
 
         $response->assertStatus(200);
         $response->assertSee($order->order_number);
@@ -94,7 +98,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_products_index_loads_successfully(): void
     {
-        $response = $this->get('/admin/produits');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/produits');
 
         $response->assertStatus(200);
         $response->assertSee('Catalogue Produits');
@@ -103,7 +108,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_stock_inventory_loads_successfully(): void
     {
-        $response = $this->get('/admin/stock');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/stock');
 
         $response->assertStatus(200);
         $response->assertSee('Inventaire & Stock');
@@ -112,7 +118,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_customers_directory_loads_successfully(): void
     {
-        $response = $this->get('/admin/clients');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/clients');
 
         $response->assertStatus(200);
         $response->assertSee('Répertoire Clients');
@@ -121,7 +128,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_payments_journal_loads_successfully(): void
     {
-        $response = $this->get('/admin/paiements');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/paiements');
 
         $response->assertStatus(200);
         $response->assertSee('Paiements & Transactions');
@@ -130,7 +138,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_deliveries_loads_successfully(): void
     {
-        $response = $this->get('/admin/livraisons');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/livraisons');
 
         $response->assertStatus(200);
         $response->assertSee('Livraisons Bamako');
@@ -139,7 +148,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_reports_loads_successfully(): void
     {
-        $response = $this->get('/admin/rapports');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/rapports');
 
         $response->assertStatus(200);
         $response->assertSee('Rapports & Ventes', false);
@@ -148,7 +158,8 @@ class BkoSuMarketplaceTest extends TestCase
 
     public function test_admin_settings_loads_successfully(): void
     {
-        $response = $this->get('/admin/parametres');
+        $admin = User::where('role', 'super_admin')->first();
+        $response = $this->actingAs($admin)->get('/admin/parametres');
 
         $response->assertStatus(200);
         $response->assertSee('Paramètres du Supermarché');

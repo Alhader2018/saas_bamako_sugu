@@ -90,10 +90,33 @@
                     <div 
                         x-show="accountOpen" 
                         x-cloak
-                        class="absolute right-0 mt-1 w-48 bg-white rounded-lg border border-[#ECECEC] shadow-sm py-1.5 z-50 text-xs"
+                        class="absolute right-0 mt-1 w-52 bg-white rounded-lg border border-[#ECECEC] shadow-md py-1.5 z-50 text-xs divide-y divide-[#F3F4F6]"
                     >
-                        <a href="{{ route('checkout') }}" class="block px-3.5 py-2 hover:bg-neutral-50 text-[#1C1C1C]">Mes commandes</a>
-                        <a href="{{ route('admin.dashboard') }}" class="block px-3.5 py-2 hover:bg-neutral-50 text-[#1C1C1C]">Administration</a>
+                        @auth
+                            <div class="px-3.5 py-2 text-[11px] text-[#6B7280]">
+                                Connecté en tant que :<br>
+                                <strong class="text-[#111111] font-semibold truncate block">{{ auth()->user()->name }}</strong>
+                            </div>
+                            <div class="py-1">
+                                <a href="{{ route('checkout') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Finaliser mon panier</a>
+                                @if(auth()->user()->isStaff())
+                                    <a href="{{ route('admin.dashboard') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#E31E24] font-medium">Administration BKO SU →</a>
+                                @endif
+                            </div>
+                            <div class="py-1">
+                                <form action="{{ route('logout') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="w-full text-left px-3.5 py-1.5 hover:bg-neutral-50 text-red-600 font-medium">
+                                        Se déconnecter
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            <div class="py-1">
+                                <a href="{{ route('login') }}" class="block px-3.5 py-2 hover:bg-neutral-50 text-[#1C1C1C] font-semibold">Se connecter</a>
+                                <a href="{{ route('register') }}" class="block px-3.5 py-2 hover:bg-neutral-50 text-[#4B5563]">Créer un compte</a>
+                            </div>
+                        @endauth
                     </div>
                 </div>
 

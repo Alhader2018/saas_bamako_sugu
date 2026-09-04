@@ -70,58 +70,110 @@ class CheckoutForm extends Component
 
     public function submitOrder()
     {
-        $items = CartService::getCart();
+        $cartItems = CartService::getCart();
 
-        if (empty($items)) {
+        if (empty($cartItems)) {
             $this->addError('cart', 'Votre panier est vide.');
             return;
         }
 
         $this->validate();
 
-        $subtotal = CartService::subtotal();
-        $deliveryFee = CartService::deliveryFee();
-        $total = CartService::total();
+        $productIds = array_keys($cartItems);
 
-        $orderNumber = 'BKO-' . date('Y') . '-' . strtoupper(substr(uniqid(), -5));
+        try {
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($cartItems, $productIds) {
+                // 1. Verrouillage pessimiste pour éviter les race conditions sur le stock
+                $products = \App\Models\Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
 
-        $order = Order::create([
-            'order_number' => $orderNumber,
-            'customer_first_name' => $this->firstName,
-            'customer_last_name' => $this->lastName,
-            'customer_phone' => $this->phone,
-            'customer_email' => $this->email ?: null,
-            'city' => $this->city,
-            'neighborhood' => $this->neighborhood,
-            'address' => $this->address,
-            'delivery_notes' => $this->deliveryNotes ?: null,
-            'payment_method' => $this->paymentMethod,
-            'orange_money_number' => $this->paymentMethod === 'orange_money' ? $this->orangeMoneyNumber : null,
-            'payment_status' => $this->paymentMethod === 'orange_money' ? 'paid' : 'pending',
-            'subtotal' => $subtotal,
-            'delivery_fee' => $deliveryFee,
-            'discount' => 0,
-            'total' => $total,
-            'status' => 'confirmed',
-        ]);
+                $calculatedSubtotal = 0;
+                $orderItemsData = [];
 
-        foreach ($items as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['id'],
-                'product_name' => $item['name'],
-                'product_image' => $item['image_url'],
-                'price' => $item['price'],
-                'quantity' => $item['quantity'],
-                'total' => $item['price'] * $item['quantity'],
-            ]);
+                foreach ($cartItems as $productId => $item) {
+                    $product = $products->get($productId);
+
+                    if (!$product) {
+                        throw new \RuntimeException("L'article {$item['name']} n'est plus disponible.");
+                    }
+
+                    $quantity = (int) $item['quantity'];
+                    if ($quantity <= 0) {
+                        throw new \RuntimeException("Quantité invalide pour {$product->name}.");
+                    }
+
+                    // 2. Vérification stricte du stock serveur
+                    if ($product->stock < $quantity) {
+                        throw new \RuntimeException("Stock insuffisant pour {$product->name} (disponible : {$product->stock}).");
+                    }
+
+                    // 3. Recalcul du prix basé exclusivement sur la base de données (pas la session)
+                    $unitPrice = (int) $product->price;
+                    $lineTotal = $unitPrice * $quantity;
+                    $calculatedSubtotal += $lineTotal;
+
+                    // Décrémentation immédiate du stock
+                    $product->decrement('stock', $quantity);
+
+                    $orderItemsData[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_image' => $product->image_url,
+                        'price' => $unitPrice,
+                        'quantity' => $quantity,
+                        'total' => $lineTotal,
+                    ];
+                }
+
+                // Frais de livraison recalculés serveur
+                $deliveryFee = $calculatedSubtotal >= 50000 ? 0 : CartService::DELIVERY_FEE;
+                $grandTotal = $calculatedSubtotal + $deliveryFee;
+
+                $orderNumber = 'BKO-' . date('Y') . '-' . strtoupper(substr(uniqid(), -5));
+                $trackingToken = \Illuminate\Support\Str::random(40);
+
+                // 4. Création de la commande avec statut initial 'pending'
+                $created = Order::create([
+                    'user_id' => auth()->id(),
+                    'order_number' => $orderNumber,
+                    'tracking_token' => $trackingToken,
+                    'customer_first_name' => $this->firstName,
+                    'customer_last_name' => $this->lastName,
+                    'customer_phone' => $this->phone,
+                    'customer_email' => $this->email ?: null,
+                    'city' => $this->city,
+                    'neighborhood' => $this->neighborhood,
+                    'address' => $this->address,
+                    'delivery_notes' => $this->deliveryNotes ?: null,
+                    'payment_method' => $this->paymentMethod,
+                    'orange_money_number' => $this->paymentMethod === 'orange_money' ? $this->orangeMoneyNumber : null,
+                    'payment_status' => 'pending', // Strictement pending jusqu'à confirmation externe
+                    'subtotal' => $calculatedSubtotal,
+                    'delivery_fee' => $deliveryFee,
+                    'discount' => 0,
+                    'total' => $grandTotal,
+                    'status' => 'confirmed',
+                ]);
+
+                foreach ($orderItemsData as $itemData) {
+                    $itemData['order_id'] = $created->id;
+                    OrderItem::create($itemData);
+                }
+
+                return $created;
+            });
+        } catch (\Throwable $e) {
+            $this->addError('cart', $e->getMessage());
+            return;
         }
+
+        // Sauvegarder le token dans la session du visiteur pour l'autoriser à voir sa commande (protection anti-IDOR)
+        session()->put('accessible_order_tokens.' . $order->order_number, $order->tracking_token);
 
         CartService::clear();
         $this->createdOrder = $order;
         $this->dispatch('cart-updated');
 
-        // Si l'API Orange Money est configurée, initier le paiement en ligne et rediriger
+        // Si Orange Money, initier le WebPayment
         if ($this->paymentMethod === 'orange_money' && config('services.orange_money.client_id') && config('services.orange_money.merchant_key')) {
             try {
                 $orangeMoneyService = app(\App\Services\OrangeMoneyService::class);
@@ -131,7 +183,6 @@ class CheckoutForm extends Component
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error('Erreur initiation Orange Money WebPayment: ' . $e->getMessage());
-                // En cas d'erreur réseau, poursuivre vers la confirmation USSD standard
             }
         }
 

@@ -6,11 +6,20 @@ use App\Http\Controllers\StoreController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
+// Authentification
+Route::middleware('guest')->group(function () {
+    Route::get('/connexion', [\App\Http\Controllers\AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/connexion', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:login');
+    Route::get('/inscription', [\App\Http\Controllers\AuthController::class, 'showRegisterForm'])->name('register');
+    Route::post('/inscription', [\App\Http\Controllers\AuthController::class, 'register'])->middleware('throttle:login');
+});
+Route::post('/deconnexion', [\App\Http\Controllers\AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
 // Storefront BKO SU
 Route::get('/', [StoreController::class, 'index'])->name('home');
 Route::get('/catalogue', [StoreController::class, 'catalog'])->name('catalog');
 Route::get('/produit/{slug}', [StoreController::class, 'show'])->name('product.show');
-Route::get('/commander', [StoreController::class, 'checkout'])->name('checkout');
+Route::get('/commander', [StoreController::class, 'checkout'])->middleware('throttle:checkout')->name('checkout');
 
 // Orange Money WebPayment Callbacks
 Route::get('/checkout/orange/return', [OrangeMoneyController::class, 'return'])->name('checkout.orange.return');
@@ -19,8 +28,8 @@ Route::post('/checkout/orange/notif', [OrangeMoneyController::class, 'notif'])
     ->name('checkout.orange.notif')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
-// Administration BKO SU (WooCommerce-inspired architecture)
-Route::prefix('admin')->name('admin.')->group(function () {
+// Administration BKO SU (Strictement protégée par auth + staff RBAC)
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(function () {
     // Vue d'ensemble (Dashboard)
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
 

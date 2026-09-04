@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'role', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,6 +27,37 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin']);
+    }
+
+    public function isStaff(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin', 'order_manager', 'catalog_manager']) && $this->is_active;
+    }
+
+    public function canManageOrders(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin', 'order_manager']) && $this->is_active;
+    }
+
+    public function canManageCatalog(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin', 'catalog_manager']) && $this->is_active;
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

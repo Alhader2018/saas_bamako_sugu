@@ -179,8 +179,18 @@
             <span class="text-[10px] text-[#9CA3AF]">↗</span>
         </a>
         <div class="mt-2 px-2.5 pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span class="truncate font-medium text-[#111111]">Admin BKO SU</span>
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <div class="truncate">
+                <span class="truncate font-semibold text-[#111111] block">{{ auth()->user()?->name ?: 'Admin BKO SU' }}</span>
+                <span class="text-[10px] text-[#6B7280]">{{ ucfirst(auth()->user()?->role ?: 'staff') }}</span>
+            </div>
+            <form action="{{ route('logout') }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" title="Se déconnecter" class="p-1 text-[#9CA3AF] hover:text-[#E31E24] hover:bg-white rounded transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                </button>
+            </form>
         </div>
     </div>
 </aside>

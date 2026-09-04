@@ -14,12 +14,37 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Créer l'administrateur
-        User::firstOrCreate(
+        // Créer les utilisateurs avec rôles distincts (RBAC)
+        User::updateOrCreate(
             ['email' => 'admin@bamakosugu.com'],
             [
                 'name' => 'Admin BKO SU',
+                'role' => 'super_admin',
+                'phone' => '+223 70 00 00 00',
                 'password' => bcrypt('admin1234'),
+                'is_active' => true,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'commandes@bamakosugu.com'],
+            [
+                'name' => 'Gestionnaire Commandes',
+                'role' => 'order_manager',
+                'phone' => '+223 76 11 22 33',
+                'password' => bcrypt('orders1234'),
+                'is_active' => true,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'client@bamakosugu.com'],
+            [
+                'name' => 'Client Test',
+                'role' => 'customer',
+                'phone' => '+223 66 55 44 33',
+                'password' => bcrypt('client1234'),
+                'is_active' => true,
             ]
         );
 
