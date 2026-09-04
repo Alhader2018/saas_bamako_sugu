@@ -12,8 +12,18 @@ Route::middleware('guest')->group(function () {
     Route::post('/connexion', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:login');
     Route::get('/inscription', [\App\Http\Controllers\AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/inscription', [\App\Http\Controllers\AuthController::class, 'register'])->middleware('throttle:login');
+
+    // Google OAuth (Gmail)
+    Route::get('/auth/google', [\App\Http\Controllers\AuthController::class, 'redirectToGoogle'])->name('auth.google');
+    Route::get('/auth/google/callback', [\App\Http\Controllers\AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 });
-Route::post('/deconnexion', [\App\Http\Controllers\AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+// Profil & Déconnexion (Authentifié)
+Route::middleware('auth')->group(function () {
+    Route::get('/completer-profil', [\App\Http\Controllers\AuthController::class, 'showCompleteProfileForm'])->name('profile.complete');
+    Route::post('/completer-profil', [\App\Http\Controllers\AuthController::class, 'updateCompleteProfile'])->name('profile.complete.update');
+    Route::post('/deconnexion', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+});
 
 // Storefront BKO SU
 Route::get('/', [StoreController::class, 'index'])->name('home');

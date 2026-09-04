@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'phone', 'role', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'role', 'is_active', 'google_id', 'avatar', 'city', 'neighborhood', 'address'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -54,6 +54,11 @@ class User extends Authenticatable
     public function canManageCatalog(): bool
     {
         return in_array($this->role, ['super_admin', 'admin', 'catalog_manager']) && $this->is_active;
+    }
+
+    public function hasCompleteDeliveryProfile(): bool
+    {
+        return !empty($this->phone) && !empty($this->neighborhood) && !empty($this->address);
     }
 
     public function orders()
