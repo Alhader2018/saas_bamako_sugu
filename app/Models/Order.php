@@ -22,6 +22,10 @@ class Order extends Model
         'delivery_notes',
         'payment_method',
         'orange_money_number',
+        'orange_money_order_id',
+        'orange_money_pay_token',
+        'orange_money_notif_token',
+        'orange_money_transaction_id',
         'payment_status',
         'subtotal',
         'delivery_fee',
@@ -40,6 +44,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function getGrandTotalAttribute(): int
+    {
+        return (int) $this->total;
     }
 
     public function getFormattedTotalAttribute(): string

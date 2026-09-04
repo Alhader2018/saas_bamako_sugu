@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    'orange_money' => [
+        'client_id' => env('ORANGE_MONEY_CLIENT_ID'),
+        'client_secret' => env('ORANGE_MONEY_CLIENT_SECRET'),
+        'merchant_key' => env('ORANGE_MONEY_MERCHANT_KEY'),
+        'currency' => env('ORANGE_MONEY_CURRENCY', 'OUV'),
+        'oauth_token_url' => env('ORANGE_MONEY_OAUTH_TOKEN_URL', 'https://api.orange.com/oauth/v3/token'),
+        'webpayment_url' => env('ORANGE_MONEY_WEBPAYMENT_URL', 'https://api.orange.com/orange-money-webpay/dev/v1/webpayment'),
+        'transaction_status_url' => env('ORANGE_MONEY_TRANSACTION_STATUS_URL', 'https://api.orange.com/orange-money-webpay/dev/v1/transactionstatus'),
+        'ssl_verify' => env('ORANGE_MONEY_SSL_VERIFY', true),
+        'ca_cert_path' => env('ORANGE_MONEY_CA_CERT_PATH', ''),
+    ],
+
 ];

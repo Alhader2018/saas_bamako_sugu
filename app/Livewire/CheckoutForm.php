@@ -119,8 +119,23 @@ class CheckoutForm extends Component
 
         CartService::clear();
         $this->createdOrder = $order;
-        $this->orderCompleted = true;
         $this->dispatch('cart-updated');
+
+        // Si l'API Orange Money est configurée, initier le paiement en ligne et rediriger
+        if ($this->paymentMethod === 'orange_money' && config('services.orange_money.client_id') && config('services.orange_money.merchant_key')) {
+            try {
+                $orangeMoneyService = app(\App\Services\OrangeMoneyService::class);
+                $paymentData = $orangeMoneyService->createWebPayment($order);
+                if (!empty($paymentData['payment_url'])) {
+                    return redirect()->away($paymentData['payment_url']);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Erreur initiation Orange Money WebPayment: ' . $e->getMessage());
+                // En cas d'erreur réseau, poursuivre vers la confirmation USSD standard
+            }
+        }
+
+        $this->orderCompleted = true;
     }
 
     public function render()
