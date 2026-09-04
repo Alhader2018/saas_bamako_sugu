@@ -10,19 +10,20 @@ class OrangeMoneyService
 {
     public function createWebPayment(Order $order): array
     {
-        $orderId = $order->order_number;
+        $orderId = substr((string) $order->order_number, 0, 30);
         $amount = (int) round((float) $order->grand_total);
+        $reference = substr('REF-' . $orderId, 0, 30);
 
         $payload = [
             'merchant_key' => $this->getMerchantKey(),
             'currency' => config('services.orange_money.currency', 'OUV'),
             'order_id' => $orderId,
             'amount' => $amount,
-            'return_url' => route('checkout.orange.return', [], true),
-            'cancel_url' => route('checkout.orange.cancel', [], true),
+            'return_url' => route('checkout.orange.return', ['order_id' => $orderId], true),
+            'cancel_url' => route('checkout.orange.cancel', ['order_id' => $orderId], true),
             'notif_url' => route('checkout.orange.notif', [], true),
             'lang' => 'fr',
-            'reference' => 'REF-' . $orderId,
+            'reference' => $reference,
         ];
 
         $response = Http::withToken($this->getAccessToken())
