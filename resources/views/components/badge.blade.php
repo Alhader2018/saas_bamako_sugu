@@ -4,18 +4,18 @@
 ])
 
 @php
-$baseClasses = "inline-flex items-center font-bold tracking-tight rounded-full";
+$baseClasses = "inline-flex items-center font-semibold rounded-md tracking-normal";
 
 $sizeClasses = match($size) {
-    'xs' => 'px-2 py-0.5 text-[10px]',
-    'md' => 'px-3 py-1 text-xs',
-    default => 'px-2.5 py-0.5 text-xs',
+    'xs' => 'px-1.5 py-0.5 text-[10px]',
+    'md' => 'px-2.5 py-1 text-xs',
+    default => 'px-2 py-0.5 text-xs',
 };
 
 $variantClasses = match($variant) {
     'promo' => 'bg-[#F7B500] text-[#111111]',
     'danger' => 'bg-[#E31E24] text-white',
-    'success' => 'bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20',
+    'success' => 'bg-emerald-50 text-[#16A34A] border border-emerald-200',
     'dark' => 'bg-[#111111] text-white',
     'neutral' => 'bg-neutral-100 text-[#1C1C1C] border border-[#ECECEC]',
     default => 'bg-[#F7B500] text-[#111111]',
