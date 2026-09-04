@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 56" fill="none" class="h-9 w-auto">
+    <!-- Panier / Shopping Bag Icon Iconique -->
+    <g transform="translate(4, 4)">
+        <rect x="2" y="10" width="38" height="34" rx="9" fill="#E31E24" />
+        <!-- Poignée du panier -->
+        <path d="M13 12V8C13 4.68629 15.6863 2 19 2H23C26.3137 2 29 4.68629 29 8V12" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+        <!-- Éclair / Accent opportunité jaune SU -->
+        <path d="M22 17L16 27H22L20 37L28 25H22L24 17H22Z" fill="#F7B500" />
+    </g>
+    
+    <!-- Typographie BKO -->
+    <text x="56" y="35" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="-0.03em" fill="#E31E24">BKO</text>
+    
+    <!-- Badge Pill SU Jaune -->
+    <rect x="126" y="12" width="46" height="28" rx="8" fill="#F7B500" />
+    <text x="149" y="32" text-anchor="middle" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="20" font-weight="900" fill="#111111" letter-spacing="-0.02em">SU</text>
+
+    <!-- Sous-titre officiel Bamako Supermarché -->
+    <text x="57" y="47" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="0.14em" fill="#6B7280">BAMAKO SUPERMARCHÉ</text>
+</svg>
