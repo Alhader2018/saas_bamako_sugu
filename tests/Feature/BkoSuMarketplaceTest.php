@@ -64,8 +64,95 @@ class BkoSuMarketplaceTest extends TestCase
         $response = $this->get('/admin');
 
         $response->assertStatus(200);
-        $response->assertSee('Tableau de bord Administration');
-        $response->assertSee('Commandes Récentes');
+        $response->assertSee('Tableau de bord');
+        $response->assertSee('Commandes récentes');
+        $response->assertSee('Chiffre', false);
+    }
+
+    public function test_admin_orders_index_loads_with_woocommerce_tabs_and_filters(): void
+    {
+        $response = $this->get('/admin/commandes');
+
+        $response->assertStatus(200);
+        $response->assertSee('Commandes');
+        $response->assertSee('Actions groupées');
+        $response->assertSee('Filtrer');
+    }
+
+    public function test_admin_order_detail_loads_successfully(): void
+    {
+        $order = \App\Models\Order::first();
+        $this->assertNotNull($order);
+
+        $response = $this->get('/admin/commandes/' . $order->id);
+
+        $response->assertStatus(200);
+        $response->assertSee($order->order_number);
+        $response->assertSee('Articles de la commande');
+        $response->assertSee('Informations de Paiement');
+    }
+
+    public function test_admin_products_index_loads_successfully(): void
+    {
+        $response = $this->get('/admin/produits');
+
+        $response->assertStatus(200);
+        $response->assertSee('Catalogue Produits');
+        $response->assertSee('Ajouter un produit');
+    }
+
+    public function test_admin_stock_inventory_loads_successfully(): void
+    {
+        $response = $this->get('/admin/stock');
+
+        $response->assertStatus(200);
+        $response->assertSee('Inventaire & Stock');
+        $response->assertSee('Unités physiques en rayon');
+    }
+
+    public function test_admin_customers_directory_loads_successfully(): void
+    {
+        $response = $this->get('/admin/clients');
+
+        $response->assertStatus(200);
+        $response->assertSee('Répertoire Clients');
+        $response->assertSee('Clients uniques identifiés');
+    }
+
+    public function test_admin_payments_journal_loads_successfully(): void
+    {
+        $response = $this->get('/admin/paiements');
+
+        $response->assertStatus(200);
+        $response->assertSee('Paiements & Transactions');
+        $response->assertSee('Orange Money');
+    }
+
+    public function test_admin_deliveries_loads_successfully(): void
+    {
+        $response = $this->get('/admin/livraisons');
+
+        $response->assertStatus(200);
+        $response->assertSee('Livraisons Bamako');
+        $response->assertSee('À préparer en magasin');
+    }
+
+    public function test_admin_reports_loads_successfully(): void
+    {
+        $response = $this->get('/admin/rapports');
+
+        $response->assertStatus(200);
+        $response->assertSee('Rapports & Ventes', false);
+        $response->assertSee('Chiffre', false);
+    }
+
+    public function test_admin_settings_loads_successfully(): void
+    {
+        $response = $this->get('/admin/parametres');
+
+        $response->assertStatus(200);
+        $response->assertSee('Paramètres du Supermarché');
+        $response->assertSee('Orange Money Mali');
     }
 
     public function test_cart_service_calculates_totals_properly(): void

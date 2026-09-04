@@ -19,9 +19,44 @@ Route::post('/checkout/orange/notif', [OrangeMoneyController::class, 'notif'])
     ->name('checkout.orange.notif')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
-// Administration BKO SU
+// Administration BKO SU (WooCommerce-inspired architecture)
 Route::prefix('admin')->name('admin.')->group(function () {
+    // Vue d'ensemble (Dashboard)
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::post('/commandes/{order}/statut', [AdminController::class, 'updateOrderStatus'])->name('orders.status');
-    Route::post('/produits/{product}/stock', [AdminController::class, 'updateProductStock'])->name('products.stock');
+
+    // Commandes (Orders)
+    Route::get('/commandes', [\App\Http\Controllers\AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('/commandes/{order}', [\App\Http\Controllers\AdminOrderController::class, 'show'])->name('orders.show');
+    Route::post('/commandes/{order}/statut', [\App\Http\Controllers\AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    Route::post('/commandes/action-groupee', [\App\Http\Controllers\AdminOrderController::class, 'bulkAction'])->name('orders.bulk');
+    Route::get('/commandes/{order}/imprimer', [\App\Http\Controllers\AdminOrderController::class, 'print'])->name('orders.print');
+
+    // Produits (Products)
+    Route::get('/produits', [\App\Http\Controllers\AdminProductController::class, 'index'])->name('products.index');
+    Route::get('/produits/creer', [\App\Http\Controllers\AdminProductController::class, 'create'])->name('products.create');
+    Route::post('/produits', [\App\Http\Controllers\AdminProductController::class, 'store'])->name('products.store');
+    Route::get('/produits/{product}/modifier', [\App\Http\Controllers\AdminProductController::class, 'edit'])->name('products.edit');
+    Route::put('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'update'])->name('products.update');
+    Route::delete('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'destroy'])->name('products.destroy');
+    Route::post('/produits/{product}/stock', [\App\Http\Controllers\AdminProductController::class, 'updateStock'])->name('products.stock');
+
+    // Stock & Inventaire
+    Route::get('/stock', [\App\Http\Controllers\AdminStockController::class, 'index'])->name('stock.index');
+    Route::post('/stock/{product}/ajuster', [\App\Http\Controllers\AdminStockController::class, 'quickUpdate'])->name('stock.quick-update');
+
+    // Clients
+    Route::get('/clients', [\App\Http\Controllers\AdminCustomerController::class, 'index'])->name('customers.index');
+    Route::get('/clients/{phone}', [\App\Http\Controllers\AdminCustomerController::class, 'show'])->name('customers.show');
+
+    // Paiements & Réconciliation Orange Money
+    Route::get('/paiements', [\App\Http\Controllers\AdminPaymentController::class, 'index'])->name('payments.index');
+
+    // Livraisons Bamako
+    Route::get('/livraisons', [\App\Http\Controllers\AdminDeliveryController::class, 'index'])->name('deliveries.index');
+
+    // Analyse & Rapports
+    Route::get('/rapports', [\App\Http\Controllers\AdminReportController::class, 'index'])->name('reports.index');
+
+    // Paramètres
+    Route::get('/parametres', [\App\Http\Controllers\AdminSettingController::class, 'index'])->name('settings.index');
 });
