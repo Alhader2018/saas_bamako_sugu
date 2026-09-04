@@ -108,44 +108,60 @@ class AuthController extends Controller
 
     public function redirectToGoogle()
     {
-        return \Laravel\Socialite\Facades\Socialite::driver('google')->redirect();
+        if (!\App\Services\GoogleAuthService::isConfigured()) {
+            return redirect()->route('login')->with('error', "La connexion Google n'est pas encore configurée sur le serveur. Veuillez renseigner GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET dans le fichier .env.");
+        }
+
+        return redirect()->away(\App\Services\GoogleAuthService::getRedirectUrl());
     }
 
     public function handleGoogleCallback(Request $request)
     {
-        try {
-            $googleUser = \Laravel\Socialite\Facades\Socialite::driver('google')->user();
-        } catch (\Throwable $e) {
-            return redirect()->route('login')->with('error', 'Erreur lors de la connexion avec Google. Veuillez réessayer.');
+        if ($request->has('error')) {
+            return redirect()->route('login')->with('error', 'Connexion avec Google annulée.');
         }
 
-        $email = strtolower(trim($googleUser->getEmail() ?? ''));
-        if (empty($email)) {
-            return redirect()->route('login')->with('error', 'Impossible de récupérer votre adresse email Google.');
+        $code = $request->query('code');
+        $state = $request->query('state');
+
+        if (!$code) {
+            return redirect()->route('login')->with('error', 'Code d\'autorisation Google manquant.');
         }
+
+        $googleUser = \App\Services\GoogleAuthService::getUserByCode($code, $state);
+
+        if (!$googleUser || empty($googleUser['email'])) {
+            return redirect()->route('login')->with('error', 'Erreur lors de la récupération de votre profil Google. Veuillez réessayer.');
+        }
+
+        $email = strtolower(trim($googleUser['email']));
+        $googleId = $googleUser['id'] ?? null;
 
         // Recherche par google_id ou par email
-        $user = User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $email)
-            ->first();
+        $user = User::where(function ($query) use ($googleId, $email) {
+            if ($googleId) {
+                $query->where('google_id', $googleId);
+            }
+            $query->orWhere('email', $email);
+        })->first();
 
         if ($user) {
             $updates = [];
-            if (empty($user->google_id)) {
-                $updates['google_id'] = $googleUser->getId();
+            if ($googleId && empty($user->google_id)) {
+                $updates['google_id'] = $googleId;
             }
-            if (empty($user->avatar) && $googleUser->getAvatar()) {
-                $updates['avatar'] = $googleUser->getAvatar();
+            if (empty($user->avatar) && !empty($googleUser['avatar'])) {
+                $updates['avatar'] = $googleUser['avatar'];
             }
             if (!empty($updates)) {
                 $user->update($updates);
             }
         } else {
             $user = User::create([
-                'name' => $googleUser->getName() ?: 'Client BKO SU',
+                'name' => $googleUser['name'] ?: 'Client BKO SU',
                 'email' => $email,
-                'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
+                'google_id' => $googleId,
+                'avatar' => $googleUser['avatar'] ?? null,
                 'password' => Hash::make(\Illuminate\Support\Str::random(32)),
                 'role' => 'customer',
                 'is_active' => true,

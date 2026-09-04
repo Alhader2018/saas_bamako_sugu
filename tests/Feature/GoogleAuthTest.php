@@ -4,44 +4,54 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Socialite\Facades\Socialite;
-use Laravel\Socialite\Two\User as SocialiteUser;
-use Mockery;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class GoogleAuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function tearDown(): void
+    protected function setUp(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        parent::setUp();
+        config([
+            'services.google.client_id' => 'test-client-id.apps.googleusercontent.com',
+            'services.google.client_secret' => 'test-client-secret',
+            'services.google.redirect' => 'http://localhost:8000/auth/google/callback',
+        ]);
     }
 
     public function test_google_redirect_initiates_oauth_flow(): void
     {
         $response = $this->get(route('auth.google'));
 
-        // Socialite redirige vers Google Accounts OAuth
         $response->assertStatus(302);
         $this->assertStringContainsString('accounts.google.com', $response->headers->get('Location'));
+        $this->assertStringContainsString('test-client-id.apps.googleusercontent.com', $response->headers->get('Location'));
     }
 
     public function test_google_callback_creates_customer_and_redirects_to_complete_profile_if_address_missing(): void
     {
-        $socialiteUser = Mockery::mock(SocialiteUser::class);
-        $socialiteUser->shouldReceive('getId')->andReturn('google_uid_987654321');
-        $socialiteUser->shouldReceive('getEmail')->andReturn('aminata.diarra@gmail.com');
-        $socialiteUser->shouldReceive('getName')->andReturn('Aminata Diarra');
-        $socialiteUser->shouldReceive('getAvatar')->andReturn('https://lh3.googleusercontent.com/a/avatar.jpg');
+        session()->put('google_oauth_state', 'test_state_123');
 
-        $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');
-        $provider->shouldReceive('user')->andReturn($socialiteUser);
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'mock_access_token_xyz',
+                'token_type' => 'Bearer',
+                'expires_in' => 3600,
+            ], 200),
+            'https://www.googleapis.com/oauth2/v3/userinfo' => Http::response([
+                'sub' => 'google_uid_987654321',
+                'email' => 'aminata.diarra@gmail.com',
+                'name' => 'Aminata Diarra',
+                'picture' => 'https://lh3.googleusercontent.com/a/avatar.jpg',
+            ], 200),
+        ]);
 
-        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
-
-        $response = $this->get(route('auth.google.callback'));
+        $response = $this->get(route('auth.google.callback', [
+            'code' => 'mock_auth_code',
+            'state' => 'test_state_123',
+        ]));
 
         $this->assertAuthenticated();
 
@@ -52,7 +62,7 @@ class GoogleAuthTest extends TestCase
         $this->assertEquals('google_uid_987654321', $user->google_id);
         $this->assertFalse($user->hasCompleteDeliveryProfile());
 
-        // Doit impérativement rediriger vers la saisie de l'adresse de livraison
+        // Redirection vers l'adresse de livraison
         $response->assertRedirect(route('profile.complete'));
     }
 
@@ -102,21 +112,28 @@ class GoogleAuthTest extends TestCase
 
         $this->assertTrue($existingUser->hasCompleteDeliveryProfile());
 
-        $socialiteUser = Mockery::mock(SocialiteUser::class);
-        $socialiteUser->shouldReceive('getId')->andReturn('google_uid_existing_111');
-        $socialiteUser->shouldReceive('getEmail')->andReturn('ousmane.coulibaly@gmail.com');
-        $socialiteUser->shouldReceive('getName')->andReturn('Ousmane Coulibaly');
-        $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
+        session()->put('google_oauth_state', 'test_state_456');
 
-        $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');
-        $provider->shouldReceive('user')->andReturn($socialiteUser);
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'mock_access_token_abc',
+                'token_type' => 'Bearer',
+                'expires_in' => 3600,
+            ], 200),
+            'https://www.googleapis.com/oauth2/v3/userinfo' => Http::response([
+                'sub' => 'google_uid_existing_111',
+                'email' => 'ousmane.coulibaly@gmail.com',
+                'name' => 'Ousmane Coulibaly',
+                'picture' => null,
+            ], 200),
+        ]);
 
-        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
-
-        $response = $this->get(route('auth.google.callback'));
+        $response = $this->get(route('auth.google.callback', [
+            'code' => 'mock_auth_code_2',
+            'state' => 'test_state_456',
+        ]));
 
         $this->assertAuthenticatedAs($existingUser);
-        // Le profil étant déjà complet, pas besoin de redemander l'adresse
         $response->assertRedirect(route('home'));
     }
 }
