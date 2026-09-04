@@ -15,16 +15,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Créer les utilisateurs avec rôles distincts (RBAC)
-        User::updateOrCreate(
-            ['email' => 'admin@bamakosugu.com'],
-            [
-                'name' => 'Admin BKO SU',
-                'role' => 'super_admin',
-                'phone' => '+223 70 00 00 00',
-                'password' => bcrypt('admin1234'),
-                'is_active' => true,
-            ]
-        );
+        $this->call(SuperAdminSeeder::class);
 
         User::updateOrCreate(
             ['email' => 'commandes@bamakosugu.com'],
