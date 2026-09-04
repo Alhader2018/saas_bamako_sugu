@@ -21,14 +21,29 @@
             </span>
         @endif
 
-        <!-- Bouton Favoris discret -->
+        <!-- Bouton Favoris discret et fonctionnel -->
         <button 
             type="button" 
-            onclick="window.dispatchEvent(new CustomEvent('toast', {detail: {message: 'Produit ajouté à vos favoris.'}}))"
+            @auth
+                onclick="fetch('{{ route('account.favorites.toggle', $product) }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                }).then(res => res.json()).then(data => {
+                    const svg = this.querySelector('svg');
+                    if (data.favorited) {
+                        svg.classList.add('fill-current', 'text-[#E31E24]');
+                    } else {
+                        svg.classList.remove('fill-current', 'text-[#E31E24]');
+                    }
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: data.message } }));
+                })"
+            @else
+                onclick="window.location.href='{{ route('login') }}'"
+            @endauth
             aria-label="Ajouter aux favoris"
-            class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 border border-[#ECECEC] flex items-center justify-center text-neutral-400 hover:text-[#E31E24] hover:bg-white smooth-transition cursor-pointer"
+            class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 border border-[#ECECEC] flex items-center justify-center text-neutral-400 hover:text-[#E31E24] hover:bg-white smooth-transition cursor-pointer shadow-xs"
         >
-            <svg class="w-3.5 h-3.5 fill-none stroke-current" stroke-width="1.75" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5 @if(auth()->check() && auth()->user()->favorites()->where('product_id', $product->id)->exists()) fill-current text-[#E31E24] @else fill-none stroke-current @endif" stroke-width="1.75" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
         </button>

@@ -63,16 +63,16 @@
             <!-- Actions Droite -->
             <div class="flex items-center gap-2">
                 <!-- Lien Favoris -->
-                <button 
-                    type="button" 
-                    onclick="window.dispatchEvent(new CustomEvent('toast', {detail: {message: 'Vos favoris sont à jour.'}}))"
+                <a 
+                    href="{{ auth()->check() ? route('account.favorites.index') : route('login') }}"
                     class="hidden md:flex items-center justify-center w-9 h-9 rounded-md text-[#1C1C1C] hover:bg-neutral-50 border border-transparent hover:border-[#ECECEC] smooth-transition cursor-pointer"
                     aria-label="Mes favoris"
+                    title="Mes favoris"
                 >
                     <svg class="w-4 h-4 text-neutral-600 hover:text-[#E31E24]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
-                </button>
+                </a>
 
                 <!-- Mon Compte -->
                 <div class="relative" x-data="{ accountOpen: false }" @click.outside="accountOpen = false">
@@ -98,9 +98,15 @@
                                 <strong class="text-[#111111] font-semibold truncate block">{{ auth()->user()->name }}</strong>
                             </div>
                             <div class="py-1">
-                                <a href="{{ route('checkout') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Finaliser mon panier</a>
+                                <a href="{{ route('account.dashboard') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#E31E24] font-semibold">Tableau de bord</a>
+                                <a href="{{ route('account.orders.index') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Mes commandes</a>
+                                <a href="{{ route('account.favorites.index') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Mes favoris</a>
+                                <a href="{{ route('account.addresses.index') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Mes adresses</a>
+                                <a href="{{ route('account.profile.index') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#1C1C1C]">Mon profil</a>
                                 @if(auth()->user()->isStaff())
-                                    <a href="{{ route('admin.dashboard') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#E31E24] font-medium">Administration BKO SU →</a>
+                                    <div class="pt-1 mt-1 border-t border-[#F3F4F6]">
+                                        <a href="{{ route('admin.dashboard') }}" class="block px-3.5 py-1.5 hover:bg-neutral-50 text-[#E31E24] font-medium">Administration BKO SU →</a>
+                                    </div>
                                 @endif
                             </div>
                             <div class="py-1">

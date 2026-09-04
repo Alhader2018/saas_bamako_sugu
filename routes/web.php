@@ -23,6 +23,38 @@ Route::middleware('auth')->group(function () {
     Route::get('/completer-profil', [\App\Http\Controllers\AuthController::class, 'showCompleteProfileForm'])->name('profile.complete');
     Route::post('/completer-profil', [\App\Http\Controllers\AuthController::class, 'updateCompleteProfile'])->name('profile.complete.update');
     Route::post('/deconnexion', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+
+    // Espace Client BKO SU
+    Route::prefix('compte')->name('account.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'dashboard'])->name('dashboard');
+        
+        // Commandes
+        Route::get('/commandes', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'orders'])->name('orders.index');
+        Route::get('/commandes/{order}', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'showOrder'])->name('orders.show');
+        Route::post('/commandes/{order}/annuler', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'cancelOrder'])->name('orders.cancel');
+        Route::post('/commandes/{order}/recommander', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'reorder'])->name('orders.reorder');
+
+        // Favoris
+        Route::get('/favoris', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'favorites'])->name('favorites.index');
+        Route::post('/favoris/toggle/{product}', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'toggleFavorite'])->name('favorites.toggle');
+
+        // Adresses
+        Route::get('/adresses', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'addresses'])->name('addresses.index');
+        Route::post('/adresses', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'storeAddress'])->name('addresses.store');
+        Route::post('/adresses/{address}/defaut', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'setDefaultAddress'])->name('addresses.set-default');
+        Route::delete('/adresses/{address}', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'destroyAddress'])->name('addresses.destroy');
+
+        // Paiements & Transactions
+        Route::get('/paiements', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'payments'])->name('payments.index');
+
+        // Notifications
+        Route::get('/notifications', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'notifications'])->name('notifications.index');
+
+        // Mon Profil & Sécurité
+        Route::get('/profil', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'profile'])->name('profile.index');
+        Route::put('/profil', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'updateProfile'])->name('profile.update');
+        Route::put('/profil/mot-de-passe', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'updatePassword'])->name('profile.password');
+    });
 });
 
 // Storefront BKO SU

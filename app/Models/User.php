@@ -65,4 +65,34 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    public function favoriteProducts()
+    {
+        return $this->belongsToMany(Product::class, 'favorites');
+    }
+
+    public function addresses()
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
+
+    public function defaultAddress()
+    {
+        return $this->hasOne(CustomerAddress::class)->where('is_default', true);
+    }
+
+    public function customerNotifications()
+    {
+        return $this->hasMany(CustomerNotification::class)->latest();
+    }
+
+    public function unreadNotificationsCount(): int
+    {
+        return $this->customerNotifications()->whereNull('read_at')->count();
+    }
 }
