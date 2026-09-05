@@ -91,6 +91,23 @@
                         <span>Produits</span>
                     </a>
 
+                    <a href="{{ route('admin.categories.index') }}" 
+                       class="flex items-center justify-between px-3 py-1.5 rounded-md font-medium transition-colors {{ request()->routeIs('admin.categories.*') ? 'bg-[#FEF2F2] text-[#E31E24] font-semibold border-l-2 border-[#E31E24]' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F9FAFB]' }}">
+                        <span class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 shrink-0 {{ request()->routeIs('admin.categories.*') ? 'text-[#E31E24]' : 'text-[#6B7280]' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                                <rect width="7" height="7" x="3" y="3" rx="1"></rect>
+                                <rect width="7" height="7" x="14" y="3" rx="1"></rect>
+                                <rect width="7" height="7" x="14" y="14" rx="1"></rect>
+                                <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+                            </svg>
+                            <span>Catégories</span>
+                        </span>
+                        @php $catCount = \App\Models\Category::count(); @endphp
+                        <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold {{ request()->routeIs('admin.categories.*') ? 'bg-red-100 text-[#E31E24]' : 'bg-gray-100 text-[#6B7280]' }}">
+                            {{ $catCount }}
+                        </span>
+                    </a>
+
                     <a href="{{ route('admin.stock.index') }}" 
                        class="flex items-center justify-between px-3 py-1.5 rounded-md font-medium transition-colors {{ request()->routeIs('admin.stock.*') ? 'bg-[#FEF2F2] text-[#E31E24] font-semibold border-l-2 border-[#E31E24]' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F9FAFB]' }}">
                         <span class="flex items-center gap-2.5">

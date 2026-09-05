@@ -254,7 +254,12 @@
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block font-medium text-[#374151] mb-1">Catégorie / Rayon <span class="text-red-500">*</span></label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block font-medium text-[#374151]">Catégorie / Rayon <span class="text-red-500">*</span></label>
+                                <a href="{{ route('admin.categories.create') }}" target="_blank" class="text-[11px] text-[#E31E24] hover:underline font-semibold flex items-center gap-1">
+                                    + Nouvelle catégorie
+                                </a>
+                            </div>
                             <select name="category_id" required class="w-full h-9 px-2.5 bg-white border border-[#D1D5DB] rounded-md focus:border-[#E31E24] focus:outline-none">
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>

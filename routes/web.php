@@ -102,6 +102,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(fun
     Route::delete('/produits-fichiers/{file}', [\App\Http\Controllers\AdminProductController::class, 'destroyFile'])->name('products.files.destroy');
     Route::post('/produits/{product}/stock', [\App\Http\Controllers\AdminProductController::class, 'updateStock'])->name('products.stock');
 
+    // Catégories (Categories)
+    Route::get('/categories', [\App\Http\Controllers\AdminCategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/creer', [\App\Http\Controllers\AdminCategoryController::class, 'create'])->name('categories.create');
+    Route::post('/categories', [\App\Http\Controllers\AdminCategoryController::class, 'store'])->name('categories.store');
+    Route::get('/categories/{category}/modifier', [\App\Http\Controllers\AdminCategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('/categories/{category}', [\App\Http\Controllers\AdminCategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{category}', [\App\Http\Controllers\AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+
     // Stock & Inventaire
     Route::get('/stock', [\App\Http\Controllers\AdminStockController::class, 'index'])->name('stock.index');
     Route::post('/stock/{product}/ajuster', [\App\Http\Controllers\AdminStockController::class, 'quickUpdate'])->name('stock.quick-update');
