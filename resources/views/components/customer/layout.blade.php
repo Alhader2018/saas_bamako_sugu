@@ -114,6 +114,15 @@
                             <span>Mes commandes</span>
                         </a>
 
+                        <!-- Mes téléchargements (Numérique) -->
+                        <a href="{{ route('account.downloads') }}" 
+                           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {{ request()->routeIs('account.downloads') ? 'bg-[#E31E24] text-white font-semibold shadow-xs' : 'text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111111]' }}">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            <span>Mes téléchargements</span>
+                        </a>
+
                         <!-- Mes favoris -->
                         <a href="{{ route('account.favorites.index') }}" 
                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {{ request()->routeIs('account.favorites.*') ? 'bg-[#E31E24] text-white font-semibold shadow-xs' : 'text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111111]' }}">

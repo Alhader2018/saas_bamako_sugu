@@ -1,8 +1,8 @@
 <x-admin.layout title="Catalogue Produits" :breadcrumb="['Produits' => route('admin.products.index')]">
     <!-- Header -->
-    <x-admin.page-header title="Produits" description="Gestion du catalogue et des stocks de la boutique">
+    <x-admin.page-header title="Produits" description="Gestion du catalogue physique et numérique de BKO SU">
         <x-slot:actions>
-            <a href="{{ route('admin.products.create') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#E31E24] hover:bg-[#C9171D] rounded-md transition-colors shadow-xs">
+            <a href="{{ route('admin.products.create') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#E31E24] hover:bg-[#C9171D] rounded-md transition-colors shadow-xs cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -12,11 +12,19 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <!-- Tabs WooCommerce (Section 19) -->
+    <!-- Tabs Filtres par Nature & Stock -->
     <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-4 border-b border-[#E5E7EB] text-xs">
         <a href="{{ route('admin.products.index') }}" 
-           class="px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors {{ empty($stockFilter) ? 'bg-[#111111] text-white font-semibold' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F3F4F6]' }}">
+           class="px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors {{ empty($stockFilter) && empty($typeFilter) ? 'bg-[#111111] text-white font-semibold' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F3F4F6]' }}">
             Tous <span class="ml-1 opacity-70">({{ $counts['all'] }})</span>
+        </a>
+        <a href="{{ route('admin.products.index', ['type_filter' => 'digital']) }}" 
+           class="px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors {{ $typeFilter === 'digital' ? 'bg-[#111111] text-white font-semibold' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F3F4F6]' }}">
+            ⚡ Numériques <span class="ml-1 opacity-70">({{ $counts['digital'] }})</span>
+        </a>
+        <a href="{{ route('admin.products.index', ['type_filter' => 'physical']) }}" 
+           class="px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors {{ $typeFilter === 'physical' ? 'bg-[#111111] text-white font-semibold' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F3F4F6]' }}">
+            📦 Physiques <span class="ml-1 opacity-70">({{ $counts['physical'] }})</span>
         </a>
         <a href="{{ route('admin.products.index', ['stock_filter' => 'low']) }}" 
            class="px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors {{ $stockFilter === 'low' ? 'bg-[#111111] text-white font-semibold' : 'text-[#4B5563] hover:text-[#111111] hover:bg-[#F3F4F6]' }}">
@@ -34,12 +42,15 @@
             @if($stockFilter)
                 <input type="hidden" name="stock_filter" value="{{ $stockFilter }}">
             @endif
+            @if($typeFilter)
+                <input type="hidden" name="type_filter" value="{{ $typeFilter }}">
+            @endif
 
             <div class="relative flex-1 min-w-[200px] w-full sm:w-auto">
                 <input type="text" 
                        name="search" 
                        value="{{ $search }}" 
-                       placeholder="Rechercher produit, SKU, marque..." 
+                       placeholder="Rechercher produit, SKU, formateur, auteur..." 
                        class="w-full h-8 pl-8 pr-3 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded focus:bg-white focus:border-[#E31E24] focus:outline-none">
                 <svg class="w-3.5 h-3.5 text-[#9CA3AF] absolute left-2.5 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"></circle>
@@ -54,11 +65,11 @@
                 @endforeach
             </select>
 
-            <button type="submit" class="h-8 px-3 bg-[#111111] hover:bg-black text-white rounded font-medium transition-colors w-full sm:w-auto">
+            <button type="submit" class="h-8 px-3 bg-[#111111] hover:bg-black text-white rounded font-medium transition-colors w-full sm:w-auto cursor-pointer">
                 Filtrer
             </button>
 
-            @if($search || $categoryId || $stockFilter)
+            @if($search || $categoryId || $stockFilter || $typeFilter)
                 <a href="{{ route('admin.products.index') }}" class="h-8 px-2 flex items-center text-[#6B7280] hover:text-[#111111]">
                     Réinitialiser
                 </a>
@@ -66,7 +77,7 @@
         </form>
     </div>
 
-    <!-- Tableau Produits (Section 20 : miniatures 40-48px) -->
+    <!-- Tableau Produits -->
     <div class="bg-white border border-[#E5E7EB] rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-[13px] border-collapse">
@@ -74,10 +85,11 @@
                     <tr class="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] text-[11px] uppercase tracking-wider font-semibold">
                         <th class="py-2.5 px-4 w-14">Image</th>
                         <th class="py-2.5 px-3">Produit</th>
+                        <th class="py-2.5 px-3">Type</th>
                         <th class="py-2.5 px-3">SKU</th>
                         <th class="py-2.5 px-3">Catégorie</th>
                         <th class="py-2.5 px-3">Prix</th>
-                        <th class="py-2.5 px-3">Stock actuel</th>
+                        <th class="py-2.5 px-3">Stock</th>
                         <th class="py-2.5 px-4 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -102,6 +114,17 @@
                                     @endif
                                 </div>
                             </td>
+                            <td class="py-2.5 px-3 whitespace-nowrap">
+                                @if($product->isDigital())
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-900 rounded">
+                                        ⚡ {{ $product->digital_type_label ?: 'Numérique' }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-neutral-100 text-[#4B5563] rounded">
+                                        📦 Physique
+                                    </span>
+                                @endif
+                            </td>
                             <td class="py-2.5 px-3 text-xs font-mono text-[#6B7280] whitespace-nowrap">
                                 {{ $product->reference }}
                             </td>
@@ -117,17 +140,23 @@
                                 @endif
                             </td>
                             <td class="py-2.5 px-3 whitespace-nowrap">
-                                <form action="{{ route('admin.products.stock', $product) }}" method="POST" class="inline-flex items-center gap-1.5">
-                                    @csrf
-                                    <input type="number" 
-                                           name="stock" 
-                                           value="{{ $product->stock }}" 
-                                           min="0" 
-                                           class="w-16 h-7 text-xs border border-[#D1D5DB] rounded px-1.5 text-center focus:border-[#E31E24] focus:outline-none {{ $product->stock <= 0 ? 'bg-red-50 text-red-700 font-bold border-red-300' : ($product->stock <= 5 ? 'bg-amber-50 text-amber-800 font-bold border-amber-300' : '') }}">
-                                    <button type="submit" title="Enregistrer le stock" class="px-2 py-1 bg-white border border-[#D1D5DB] hover:bg-[#F9FAFB] text-[11px] rounded text-[#374151]">
-                                        ✓
-                                    </button>
-                                </form>
+                                @if($product->isDigital())
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        Illimité
+                                    </span>
+                                @else
+                                    <form action="{{ route('admin.products.stock', $product) }}" method="POST" class="inline-flex items-center gap-1.5">
+                                        @csrf
+                                        <input type="number" 
+                                               name="stock" 
+                                               value="{{ $product->stock }}" 
+                                               min="0" 
+                                               class="w-16 h-7 text-xs border border-[#D1D5DB] rounded px-1.5 text-center focus:border-[#E31E24] focus:outline-none {{ $product->stock <= 0 ? 'bg-red-50 text-red-700 font-bold border-red-300' : ($product->stock <= 5 ? 'bg-amber-50 text-amber-800 font-bold border-amber-300' : '') }}">
+                                        <button type="submit" title="Enregistrer le stock" class="px-2 py-1 bg-white border border-[#D1D5DB] hover:bg-[#F9FAFB] text-[11px] rounded text-[#374151] cursor-pointer">
+                                            ✓
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                             <td class="py-2.5 px-4 text-right whitespace-nowrap">
                                 <div class="inline-flex items-center gap-1">
@@ -137,7 +166,7 @@
                                     <form action="{{ route('admin.products.destroy', $product) }}" method="POST" onsubmit="return confirm('Confirmer la suppression de ce produit ?');" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="p-1 text-red-500 hover:text-red-700 rounded hover:bg-red-50" title="Supprimer">
+                                        <button type="submit" class="p-1 text-red-500 hover:text-red-700 rounded hover:bg-red-50 cursor-pointer" title="Supprimer">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                                                 <polyline points="3 6 5 6 21 6"></polyline>
                                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -149,7 +178,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <x-admin.empty-state title="Aucun produit trouvé" message="Modifiez les filtres ou ajoutez un nouveau produit." />
                             </td>
                         </tr>

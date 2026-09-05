@@ -53,6 +53,51 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(DigitalProductDownload::class);
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    public function hasDigitalItems(): bool
+    {
+        return $this->items->contains(function ($item) {
+            return $item->isDigital();
+        });
+    }
+
+    public function hasPhysicalItems(): bool
+    {
+        return $this->items->contains(function ($item) {
+            return $item->isPhysical();
+        });
+    }
+
+    public function isPurelyDigital(): bool
+    {
+        return $this->hasDigitalItems() && !$this->hasPhysicalItems();
+    }
+
+    public function isMixed(): bool
+    {
+        return $this->hasDigitalItems() && $this->hasPhysicalItems();
+    }
+
+    public function getOrderNatureLabelAttribute(): string
+    {
+        if ($this->isPurelyDigital()) {
+            return 'Numérique';
+        }
+        if ($this->isMixed()) {
+            return 'Mixte';
+        }
+        return 'Physique';
+    }
+
     public function getGrandTotalAttribute(): int
     {
         return (int) $this->total;

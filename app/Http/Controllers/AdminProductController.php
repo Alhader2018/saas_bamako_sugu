@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AdminProductController extends Controller
@@ -14,11 +16,20 @@ class AdminProductController extends Controller
         $search = trim((string) $request->get('search'));
         $categoryId = $request->get('category_id');
         $stockFilter = $request->get('stock_filter');
+        $typeFilter = $request->get('type_filter'); // 'physical', 'digital', or null
 
         $query = Product::with('category')->latest();
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
+        }
+
+        if ($typeFilter === 'digital') {
+            $query->where('product_type', 'digital');
+        } elseif ($typeFilter === 'physical') {
+            $query->where(function ($q) {
+                $q->where('product_type', 'physical')->orWhereNull('product_type');
+            });
         }
 
         if ($stockFilter === 'out') {
@@ -42,11 +53,13 @@ class AdminProductController extends Controller
 
         $counts = [
             'all' => Product::count(),
+            'digital' => Product::where('product_type', 'digital')->count(),
+            'physical' => Product::where('product_type', '!=', 'digital')->orWhereNull('product_type')->count(),
             'low' => Product::where('stock', '<=', 5)->where('stock', '>', 0)->count(),
             'out' => Product::where('stock', '<=', 0)->count(),
         ];
 
-        return view('admin.products.index', compact('products', 'categories', 'counts', 'search', 'categoryId', 'stockFilter'));
+        return view('admin.products.index', compact('products', 'categories', 'counts', 'search', 'categoryId', 'stockFilter', 'typeFilter'));
     }
 
     public function create()
@@ -57,12 +70,20 @@ class AdminProductController extends Controller
 
     public function store(Request $request)
     {
+        $isDigital = $request->input('product_type') === 'digital';
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
+            'product_type' => 'required|in:physical,digital',
+            'digital_type' => 'nullable|string|max:50',
+            'access_type' => 'nullable|in:file_download,external_link,video_player',
+            'external_access_url' => 'nullable|url',
+            'download_limit' => 'nullable|integer|min:1',
+            'download_expiry_days' => 'nullable|integer|min:1',
             'price' => 'required|integer|min:0',
             'original_price' => 'nullable|integer|min:0',
-            'stock' => 'required|integer|min:0',
+            'stock' => $isDigital ? 'nullable|integer|min:0' : 'required|integer|min:0',
             'vendor_name' => 'nullable|string|max:255',
             'reference' => 'nullable|string|max:50',
             'badge' => 'nullable|string|max:50',
@@ -72,10 +93,14 @@ class AdminProductController extends Controller
             'is_popular' => 'boolean',
             'is_new' => 'boolean',
             'is_recommended' => 'boolean',
+            'files.*' => 'nullable|file|max:512000', // max 500Mo par fichier
+            'file_names.*' => 'nullable|string|max:255',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(5);
         $validated['reference'] = $validated['reference'] ?: 'REF-' . strtoupper(Str::random(6));
+        $validated['stock'] = $isDigital ? 9999 : (int) ($validated['stock'] ?? 0);
+        $validated['access_type'] = $validated['access_type'] ?: 'file_download';
         $validated['is_flash_deal'] = $request->boolean('is_flash_deal');
         $validated['is_popular'] = $request->boolean('is_popular');
         $validated['is_new'] = $request->boolean('is_new');
@@ -89,23 +114,51 @@ class AdminProductController extends Controller
 
         $product = Product::create($validated);
 
+        // Traitement des fichiers attachés
+        if ($isDigital && $request->hasFile('files')) {
+            foreach ($request->file('files') as $idx => $uploadedFile) {
+                if ($uploadedFile && $uploadedFile->isValid()) {
+                    $path = $uploadedFile->store('digital_products', 'local');
+                    $customName = $request->input("file_names.{$idx}") ?: pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+                    ProductFile::create([
+                        'product_id' => $product->id,
+                        'name' => $customName,
+                        'file_path' => $path,
+                        'file_name' => $uploadedFile->getClientOriginalName(),
+                        'file_size' => $uploadedFile->getSize(),
+                        'mime_type' => $uploadedFile->getClientMimeType(),
+                        'sort_order' => (int) $idx,
+                    ]);
+                }
+            }
+        }
+
         return redirect()->route('admin.products.index')->with('success', "Le produit \"{$product->name}\" a été créé avec succès.");
     }
 
     public function edit(Product $product)
     {
+        $product->load('files');
         $categories = Category::orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
     public function update(Request $request, Product $product)
     {
+        $isDigital = $request->input('product_type') === 'digital';
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
+            'product_type' => 'required|in:physical,digital',
+            'digital_type' => 'nullable|string|max:50',
+            'access_type' => 'nullable|in:file_download,external_link,video_player',
+            'external_access_url' => 'nullable|url',
+            'download_limit' => 'nullable|integer|min:1',
+            'download_expiry_days' => 'nullable|integer|min:1',
             'price' => 'required|integer|min:0',
             'original_price' => 'nullable|integer|min:0',
-            'stock' => 'required|integer|min:0',
+            'stock' => $isDigital ? 'nullable|integer|min:0' : 'required|integer|min:0',
             'vendor_name' => 'nullable|string|max:255',
             'reference' => 'nullable|string|max:50',
             'badge' => 'nullable|string|max:50',
@@ -115,8 +168,12 @@ class AdminProductController extends Controller
             'is_popular' => 'boolean',
             'is_new' => 'boolean',
             'is_recommended' => 'boolean',
+            'files.*' => 'nullable|file|max:512000',
+            'file_names.*' => 'nullable|string|max:255',
         ]);
 
+        $validated['stock'] = $isDigital ? 9999 : (int) ($validated['stock'] ?? 0);
+        $validated['access_type'] = $validated['access_type'] ?: 'file_download';
         $validated['is_flash_deal'] = $request->boolean('is_flash_deal');
         $validated['is_popular'] = $request->boolean('is_popular');
         $validated['is_new'] = $request->boolean('is_new');
@@ -130,15 +187,50 @@ class AdminProductController extends Controller
 
         $product->update($validated);
 
+        // Ajout de nouveaux fichiers
+        if ($isDigital && $request->hasFile('files')) {
+            $currentMaxSort = $product->files()->max('sort_order') ?? 0;
+            foreach ($request->file('files') as $idx => $uploadedFile) {
+                if ($uploadedFile && $uploadedFile->isValid()) {
+                    $path = $uploadedFile->store('digital_products', 'local');
+                    $customName = $request->input("file_names.{$idx}") ?: pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+                    ProductFile::create([
+                        'product_id' => $product->id,
+                        'name' => $customName,
+                        'file_path' => $path,
+                        'file_name' => $uploadedFile->getClientOriginalName(),
+                        'file_size' => $uploadedFile->getSize(),
+                        'mime_type' => $uploadedFile->getClientMimeType(),
+                        'sort_order' => (int) ($currentMaxSort + $idx + 1),
+                    ]);
+                }
+            }
+        }
+
         return redirect()->route('admin.products.index')->with('success', "Le produit \"{$product->name}\" a été mis à jour.");
     }
 
     public function destroy(Product $product)
     {
         $productName = $product->name;
+
+        // Supprimer physiquement les fichiers privés associés
+        foreach ($product->files as $file) {
+            Storage::disk('local')->delete($file->file_path);
+        }
+
         $product->delete();
 
         return redirect()->route('admin.products.index')->with('success', "Le produit \"{$productName}\" a été supprimé.");
+    }
+
+    public function destroyFile(ProductFile $file)
+    {
+        $product = $file->product;
+        Storage::disk('local')->delete($file->file_path);
+        $file->delete();
+
+        return redirect()->back()->with('success', "Le fichier \"{$file->name}\" a été retiré du produit.");
     }
 
     public function updateStock(Request $request, Product $product)

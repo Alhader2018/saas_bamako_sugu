@@ -13,6 +13,7 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'product_type',
         'product_name',
         'product_image',
         'price',
@@ -25,6 +26,16 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'total' => 'integer',
     ];
+
+    public function isDigital(): bool
+    {
+        return ($this->product_type ?? 'physical') === 'digital';
+    }
+
+    public function isPhysical(): bool
+    {
+        return !$this->isDigital();
+    }
 
     public function order(): BelongsTo
     {

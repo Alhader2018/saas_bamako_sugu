@@ -46,16 +46,22 @@
 
         <!-- Info Livraison Bamako -->
         <div class="bg-[#F8F8F8] px-5 py-2.5 border-b border-[#ECECEC] text-xs text-[#6B7280]">
-            @if($subtotal >= 50000)
+            @if(\App\Services\CartService::isPurelyDigital())
+                <span class="font-medium text-emerald-700 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+                    Produits numériques : Téléchargement immédiat (Livraison offerte).
+                </span>
+            @elseif($subtotal >= 50000)
                 <span class="font-medium text-emerald-700">Livraison offerte sur cette commande à Bamako.</span>
             @else
-                <span>Plus que <strong>{{ number_format(50000 - $subtotal, 0, ',', ' ') }} FCFA</strong> pour la livraison offerte.</span>
+                <span>Plus que <strong>{{ number_format(50000 - \App\Services\CartService::physicalSubtotal(), 0, ',', ' ') }} FCFA</strong> pour la livraison offerte.</span>
             @endif
         </div>
 
         <!-- Items List -->
         <div class="flex-1 overflow-y-auto px-5 py-3 divide-y divide-[#ECECEC]">
             @forelse($items as $item)
+                @php $isItemDigital = ($item['product_type'] ?? 'physical') === 'digital'; @endphp
                 <div class="py-3 flex gap-3 items-center first:pt-0 last:pb-0" wire:key="cart-item-{{ $item['id'] }}">
                     <img 
                         src="{{ $item['image_url'] }}" 
@@ -65,9 +71,16 @@
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-2">
-                            <h4 class="text-xs font-semibold text-[#1C1C1C] line-clamp-1">
-                                {{ $item['name'] }}
-                            </h4>
+                            <div>
+                                <h4 class="text-xs font-semibold text-[#1C1C1C] line-clamp-1">
+                                    {{ $item['name'] }}
+                                </h4>
+                                @if($isItemDigital)
+                                    <span class="inline-flex items-center px-1.5 py-0.2 text-[10px] font-medium bg-amber-100 text-amber-800 rounded">
+                                        Numérique
+                                    </span>
+                                @endif
+                            </div>
                             <button 
                                 type="button" 
                                 wire:click="removeItem({{ $item['id'] }})"
@@ -83,20 +96,24 @@
                         <p class="text-[11px] text-[#6B7280] mb-2">{{ $item['vendor_name'] }}</p>
 
                         <div class="flex items-center justify-between">
-                            <!-- Stepper Quantité -->
-                            <div class="inline-flex items-center border border-[#ECECEC] rounded bg-neutral-50 h-6 text-xs">
-                                <button 
-                                    type="button" 
-                                    wire:click="updateQuantity({{ $item['id'] }}, {{ $item['quantity'] - 1 }})"
-                                    class="w-5 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] cursor-pointer"
-                                >-</button>
-                                <span class="w-6 text-center font-medium text-[#1C1C1C]">{{ $item['quantity'] }}</span>
-                                <button 
-                                    type="button" 
-                                    wire:click="updateQuantity({{ $item['id'] }}, {{ $item['quantity'] + 1 }})"
-                                    class="w-5 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] cursor-pointer"
-                                >+</button>
-                            </div>
+                            @if($isItemDigital)
+                                <span class="text-[11px] text-neutral-500 font-medium">Qté : 1 (Licence unique)</span>
+                            @else
+                                <!-- Stepper Quantité -->
+                                <div class="inline-flex items-center border border-[#ECECEC] rounded bg-neutral-50 h-6 text-xs">
+                                    <button 
+                                        type="button" 
+                                        wire:click="updateQuantity({{ $item['id'] }}, {{ $item['quantity'] - 1 }})"
+                                        class="w-5 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] cursor-pointer"
+                                    >-</button>
+                                    <span class="w-6 text-center font-medium text-[#1C1C1C]">{{ $item['quantity'] }}</span>
+                                    <button 
+                                        type="button" 
+                                        wire:click="updateQuantity({{ $item['id'] }}, {{ $item['quantity'] + 1 }})"
+                                        class="w-5 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] cursor-pointer"
+                                    >+</button>
+                                </div>
+                            @endif
 
                             <!-- Prix -->
                             <span class="text-xs font-semibold text-[#1C1C1C]">

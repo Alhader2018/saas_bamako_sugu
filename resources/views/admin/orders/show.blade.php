@@ -10,6 +10,9 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h1 class="text-xl font-bold text-[#111111] tracking-tight">Commande {{ $order->order_number }}</h1>
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded {{ $order->isPurelyDigital() ? 'bg-amber-100 text-amber-900 border border-amber-200' : ($order->isMixed() ? 'bg-purple-100 text-purple-900 border border-purple-200' : 'bg-neutral-100 text-neutral-800') }}">
+                        {{ $order->order_nature_label }}
+                    </span>
                     <x-admin.badge :status="$order->status" type="order" />
                     <x-admin.badge :status="$order->payment_status" type="payment" />
                 </div>
@@ -64,7 +67,14 @@
                                                 <div class="w-10 h-10 bg-[#F3F4F6] rounded border border-[#E5E7EB] flex items-center justify-center text-xs text-[#9CA3AF] shrink-0">BKO</div>
                                             @endif
                                             <div>
-                                                <div class="font-medium text-[#111111]">{{ $item->product_name }}</div>
+                                                <div class="flex items-center gap-1.5 font-medium text-[#111111]">
+                                                    <span>{{ $item->product_name }}</span>
+                                                    @if($item->isDigital())
+                                                        <span class="px-1.5 py-0.2 text-[9px] font-bold bg-amber-100 text-amber-900 rounded">
+                                                            Numérique
+                                                        </span>
+                                                    @endif
+                                                </div>
                                                 @if($item->product)
                                                     <div class="text-[11px] text-[#6B7280]">Réf: {{ $item->product->reference }}</div>
                                                 @endif

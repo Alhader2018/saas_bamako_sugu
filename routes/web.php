@@ -50,12 +50,18 @@ Route::middleware('auth')->group(function () {
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'notifications'])->name('notifications.index');
 
+        // Téléchargements & Achats Numériques
+        Route::get('/telechargements', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'downloads'])->name('downloads');
+
         // Mon Profil & Sécurité
         Route::get('/profil', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'profile'])->name('profile.index');
         Route::put('/profil', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'updateProfile'])->name('profile.update');
         Route::put('/profil/mot-de-passe', [\App\Http\Controllers\Customer\CustomerDashboardController::class, 'updatePassword'])->name('profile.password');
     });
 });
+
+// Téléchargement Sécurisé de Fichiers Numériques (Vérification Token / Session / Signature)
+Route::get('/telechargements/{orderNumber}/{fileId}', [\App\Http\Controllers\DigitalDownloadController::class, 'download'])->name('digital.download');
 
 // Storefront BKO SU
 Route::get('/', [StoreController::class, 'index'])->name('home');
@@ -89,6 +95,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(fun
     Route::get('/produits/{product}/modifier', [\App\Http\Controllers\AdminProductController::class, 'edit'])->name('products.edit');
     Route::put('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'update'])->name('products.update');
     Route::delete('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'destroy'])->name('products.destroy');
+    Route::delete('/produits-fichiers/{file}', [\App\Http\Controllers\AdminProductController::class, 'destroyFile'])->name('products.files.destroy');
     Route::post('/produits/{product}/stock', [\App\Http\Controllers\AdminProductController::class, 'updateStock'])->name('products.stock');
 
     // Stock & Inventaire

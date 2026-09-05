@@ -7,12 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class Product extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'category_id',
+        'product_type',
+        'digital_type',
+        'access_type',
+        'external_access_url',
+        'download_limit',
+        'download_expiry_days',
         'name',
         'slug',
         'vendor_name',
@@ -40,6 +48,8 @@ class Product extends Model
         'original_price' => 'integer',
         'discount_percent' => 'integer',
         'stock' => 'integer',
+        'download_limit' => 'integer',
+        'download_expiry_days' => 'integer',
         'rating' => 'float',
         'reviews_count' => 'integer',
         'gallery' => 'array',
@@ -54,6 +64,36 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProductFile::class)->orderBy('sort_order');
+    }
+
+    public function isDigital(): bool
+    {
+        return ($this->product_type ?? 'physical') === 'digital';
+    }
+
+    public function isPhysical(): bool
+    {
+        return !$this->isDigital();
+    }
+
+    public function getDigitalTypeLabelAttribute(): ?string
+    {
+        return match ($this->digital_type) {
+            'ebook' => 'E-book / Livre numérique',
+            'pdf' => 'Document PDF',
+            'video' => 'Vidéo',
+            'course' => 'Formation en ligne',
+            'audio' => 'Fichier Audio / Podcast',
+            'software' => 'Logiciel / Script',
+            'zip' => 'Pack / Archive ZIP',
+            'other' => 'Produit numérique',
+            default => $this->digital_type ? ucfirst($this->digital_type) : null,
+        };
     }
 
     public function getFormattedPriceAttribute(): string
@@ -87,5 +127,15 @@ class Product extends Model
     public function scopeRecommended(Builder $query): Builder
     {
         return $query->where('is_recommended', true);
+    }
+
+    public function scopeDigital(Builder $query): Builder
+    {
+        return $query->where('product_type', 'digital');
+    }
+
+    public function scopePhysical(Builder $query): Builder
+    {
+        return $query->where('product_type', '!=', 'digital')->orWhereNull('product_type');
     }
 }

@@ -24,18 +24,27 @@ class CartService
             return $cart;
         }
 
+        $isDigital = $product->isDigital();
+
         if (isset($cart[$productId])) {
-            $cart[$productId]['quantity'] += $quantity;
+            // Pour un produit numérique, la quantité reste toujours plafonnée à 1
+            if ($isDigital) {
+                $cart[$productId]['quantity'] = 1;
+            } else {
+                $cart[$productId]['quantity'] += $quantity;
+            }
         } else {
             $cart[$productId] = [
                 'id' => $product->id,
                 'name' => $product->name,
                 'slug' => $product->slug,
+                'product_type' => $isDigital ? 'digital' : 'physical',
+                'digital_type' => $product->digital_type,
                 'price' => (int) $product->price,
                 'original_price' => (int) $product->original_price,
                 'image_url' => $product->image_url,
                 'vendor_name' => $product->vendor_name,
-                'quantity' => $quantity,
+                'quantity' => $isDigital ? 1 : max(1, $quantity),
             ];
         }
 
@@ -50,7 +59,8 @@ class CartService
         if ($quantity <= 0) {
             unset($cart[$productId]);
         } elseif (isset($cart[$productId])) {
-            $cart[$productId]['quantity'] = $quantity;
+            $isDigital = ($cart[$productId]['product_type'] ?? 'physical') === 'digital';
+            $cart[$productId]['quantity'] = $isDigital ? 1 : $quantity;
         }
 
         Session::put(self::SESSION_KEY, $cart);
@@ -76,6 +86,33 @@ class CartService
         return array_sum(array_column($cart, 'quantity'));
     }
 
+    public static function hasPhysicalItems(): bool
+    {
+        $cart = self::getCart();
+        foreach ($cart as $item) {
+            if (($item['product_type'] ?? 'physical') !== 'digital') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static function hasDigitalItems(): bool
+    {
+        $cart = self::getCart();
+        foreach ($cart as $item) {
+            if (($item['product_type'] ?? 'physical') === 'digital') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static function isPurelyDigital(): bool
+    {
+        return self::hasDigitalItems() && !self::hasPhysicalItems();
+    }
+
     public static function subtotal(): int
     {
         $cart = self::getCart();
@@ -86,14 +123,45 @@ class CartService
         return $total;
     }
 
+    public static function physicalSubtotal(): int
+    {
+        $cart = self::getCart();
+        $total = 0;
+        foreach ($cart as $item) {
+            if (($item['product_type'] ?? 'physical') !== 'digital') {
+                $total += $item['price'] * $item['quantity'];
+            }
+        }
+        return $total;
+    }
+
+    public static function digitalSubtotal(): int
+    {
+        $cart = self::getCart();
+        $total = 0;
+        foreach ($cart as $item) {
+            if (($item['product_type'] ?? 'physical') === 'digital') {
+                $total += $item['price'] * $item['quantity'];
+            }
+        }
+        return $total;
+    }
+
     public static function deliveryFee(): int
     {
         $subtotal = self::subtotal();
         if ($subtotal === 0) {
             return 0;
         }
-        // Livraison offerte dès 50 000 FCFA à Bamako
-        return $subtotal >= 50000 ? 0 : self::DELIVERY_FEE;
+
+        // Si la commande ne contient AUCUN produit physique, livraison gratuite (0 FCFA)
+        if (!self::hasPhysicalItems()) {
+            return 0;
+        }
+
+        // Livraison offerte dès 50 000 FCFA d'achats physiques à Bamako
+        $physSubtotal = self::physicalSubtotal();
+        return $physSubtotal >= 50000 ? 0 : self::DELIVERY_FEE;
     }
 
     public static function total(): int

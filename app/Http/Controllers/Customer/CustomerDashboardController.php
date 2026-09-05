@@ -113,9 +113,36 @@ class CustomerDashboardController extends Controller
         // Sécurité absolue : contrôle d'appartenance côté serveur
         abort_if($order->user_id !== $user->id, 403, 'Accès non autorisé à cette commande.');
 
-        $order->load(['items.product']);
+        $order->load(['items.product.files']);
 
         return view('account.orders.show', compact('user', 'order'));
+    }
+
+    public function downloads()
+    {
+        $user = Auth::user();
+        $this->syncGuestOrders();
+
+        // Récupérer toutes les commandes payées de l'utilisateur contenant des articles numériques
+        $orders = $user->orders()
+            ->where('payment_status', 'paid')
+            ->whereHas('items', function ($q) {
+                $q->where('product_type', 'digital');
+            })
+            ->with(['items' => function ($q) {
+                $q->where('product_type', 'digital')->with('product.files');
+            }])
+            ->latest()
+            ->get();
+
+        // Téléchargements déjà effectués pour calculer le restant
+        $downloadsCount = \App\Models\DigitalProductDownload::where('user_id', $user->id)
+            ->selectRaw('product_file_id, count(*) as count')
+            ->groupBy('product_file_id')
+            ->pluck('count', 'product_file_id')
+            ->toArray();
+
+        return view('account.downloads', compact('user', 'orders', 'downloadsCount'));
     }
 
     public function cancelOrder(Order $order)

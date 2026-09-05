@@ -28,40 +28,57 @@ class CheckoutForm extends Component
     public bool $orderCompleted = false;
     public ?Order $createdOrder = null;
 
-    protected function rules(): array
+    public function rules(): array
     {
+        $isPurelyDigital = CartService::isPurelyDigital();
+        $hasDigital = CartService::hasDigitalItems();
+
         return [
             'firstName' => 'required|string|min:2|max:100',
             'lastName' => 'required|string|min:2|max:100',
             'phone' => 'required|string|min:8',
-            'email' => 'nullable|email',
-            'city' => 'required|string',
-            'neighborhood' => 'required|string',
-            'address' => 'required|string|min:4',
+            'email' => $hasDigital ? 'required|email' : 'nullable|email',
+            'city' => $isPurelyDigital ? 'nullable|string' : 'required|string',
+            'neighborhood' => $isPurelyDigital ? 'nullable|string' : 'required|string',
+            'address' => $isPurelyDigital ? 'nullable|string' : 'required|string|min:4',
             'deliveryNotes' => 'nullable|string',
-            'paymentMethod' => 'required|in:orange_money,cash_on_delivery',
+            'paymentMethod' => $isPurelyDigital ? 'required|in:orange_money' : 'required|in:orange_money,cash_on_delivery',
             'orangeMoneyNumber' => 'required_if:paymentMethod,orange_money',
         ];
     }
 
-    protected $messages = [
-        'firstName.required' => 'Veuillez saisir votre prénom.',
-        'lastName.required' => 'Veuillez saisir votre nom.',
-        'phone.required' => 'Le numéro de téléphone malien (+223) est requis.',
-        'address.required' => 'Veuillez préciser votre adresse ou un repère connu.',
-        'neighborhood.required' => 'Veuillez choisir votre quartier à Bamako.',
-        'orangeMoneyNumber.required_if' => 'Veuillez renseigner votre numéro Orange Money.',
-    ];
+    protected function messages(): array
+    {
+        return [
+            'firstName.required' => 'Veuillez saisir votre prénom.',
+            'lastName.required' => 'Veuillez saisir votre nom.',
+            'phone.required' => 'Le numéro de téléphone malien (+223) est requis.',
+            'email.required' => 'Votre adresse email est indispensable pour recevoir vos accès aux fichiers numériques.',
+            'address.required' => 'Veuillez préciser votre adresse ou un repère connu.',
+            'neighborhood.required' => 'Veuillez choisir votre quartier à Bamako.',
+            'orangeMoneyNumber.required_if' => 'Veuillez renseigner votre numéro Orange Money.',
+            'paymentMethod.in' => 'Le paiement à la livraison n\'est pas disponible pour les produits numériques.',
+        ];
+    }
 
     public function mount(): void
     {
         if (CartService::count() === 0 && !$this->orderCompleted) {
             // Le panier est vide
         }
+
+        if (CartService::isPurelyDigital()) {
+            $this->paymentMethod = 'orange_money';
+        }
     }
 
     public function setPaymentMethod(string $method): void
     {
+        if (CartService::isPurelyDigital() && $method === 'cash_on_delivery') {
+            $this->paymentMethod = 'orange_money';
+            return;
+        }
+
         $this->paymentMethod = $method;
         if ($method === 'orange_money' && empty($this->orangeMoneyNumber) && !empty($this->phone) && $this->phone !== '+223 ') {
             $this->orangeMoneyNumber = $this->phone;
@@ -77,6 +94,11 @@ class CheckoutForm extends Component
             return;
         }
 
+        // Si le panier est 100% digital, s'assurer que le mode de paiement n'est pas cash
+        if (CartService::isPurelyDigital()) {
+            $this->paymentMethod = 'orange_money';
+        }
+
         $this->validate();
 
         $productIds = array_keys($cartItems);
@@ -87,6 +109,8 @@ class CheckoutForm extends Component
                 $products = \App\Models\Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
 
                 $calculatedSubtotal = 0;
+                $physicalSubtotal = 0;
+                $hasPhysical = false;
                 $orderItemsData = [];
 
                 foreach ($cartItems as $productId => $item) {
@@ -96,26 +120,33 @@ class CheckoutForm extends Component
                         throw new \RuntimeException("L'article {$item['name']} n'est plus disponible.");
                     }
 
-                    $quantity = (int) $item['quantity'];
+                    $isDigital = $product->isDigital();
+                    $quantity = $isDigital ? 1 : (int) $item['quantity'];
                     if ($quantity <= 0) {
                         throw new \RuntimeException("Quantité invalide pour {$product->name}.");
                     }
 
-                    // 2. Vérification stricte du stock serveur
-                    if ($product->stock < $quantity) {
-                        throw new \RuntimeException("Stock insuffisant pour {$product->name} (disponible : {$product->stock}).");
+                    // 2. Vérification stricte du stock serveur (uniquement pour les produits physiques)
+                    if (!$isDigital) {
+                        $hasPhysical = true;
+                        if ($product->stock < $quantity) {
+                            throw new \RuntimeException("Stock insuffisant pour {$product->name} (disponible : {$product->stock}).");
+                        }
+                        // Décrémentation immédiate du stock
+                        $product->decrement('stock', $quantity);
                     }
 
                     // 3. Recalcul du prix basé exclusivement sur la base de données (pas la session)
                     $unitPrice = (int) $product->price;
                     $lineTotal = $unitPrice * $quantity;
                     $calculatedSubtotal += $lineTotal;
-
-                    // Décrémentation immédiate du stock
-                    $product->decrement('stock', $quantity);
+                    if (!$isDigital) {
+                        $physicalSubtotal += $lineTotal;
+                    }
 
                     $orderItemsData[] = [
                         'product_id' => $product->id,
+                        'product_type' => $isDigital ? 'digital' : 'physical',
                         'product_name' => $product->name,
                         'product_image' => $product->image_url,
                         'price' => $unitPrice,
@@ -124,14 +155,14 @@ class CheckoutForm extends Component
                     ];
                 }
 
-                // Frais de livraison recalculés serveur
-                $deliveryFee = $calculatedSubtotal >= 50000 ? 0 : CartService::DELIVERY_FEE;
+                // Frais de livraison : 0 FCFA si que du digital, sinon règle physique (offert dès 50k)
+                $deliveryFee = (!$hasPhysical) ? 0 : ($physicalSubtotal >= 50000 ? 0 : CartService::DELIVERY_FEE);
                 $grandTotal = $calculatedSubtotal + $deliveryFee;
 
                 $orderNumber = 'BKO-' . date('Y') . '-' . strtoupper(substr(uniqid(), -5));
                 $trackingToken = \Illuminate\Support\Str::random(40);
 
-                // 4. Création de la commande avec statut initial 'pending'
+                // 4. Création de la commande avec statut initial
                 $created = Order::create([
                     'user_id' => auth()->id(),
                     'order_number' => $orderNumber,
@@ -140,9 +171,9 @@ class CheckoutForm extends Component
                     'customer_last_name' => $this->lastName,
                     'customer_phone' => $this->phone,
                     'customer_email' => $this->email ?: null,
-                    'city' => $this->city,
-                    'neighborhood' => $this->neighborhood,
-                    'address' => $this->address,
+                    'city' => !empty($this->city) ? $this->city : 'Bamako',
+                    'neighborhood' => !empty($this->neighborhood) ? $this->neighborhood : 'En ligne / Téléchargement',
+                    'address' => !empty($this->address) ? $this->address : 'Livraison numérique immédiate',
                     'delivery_notes' => $this->deliveryNotes ?: null,
                     'payment_method' => $this->paymentMethod,
                     'orange_money_number' => $this->paymentMethod === 'orange_money' ? $this->orangeMoneyNumber : null,

@@ -76,7 +76,16 @@
                         </div>
 
                         <div>
-                            @if($product->stock > 0)
+                            @if($product->isDigital())
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-2 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-900 rounded">
+                                        {{ $product->digital_type_label ?: 'Numérique' }}
+                                    </span>
+                                    <span class="text-emerald-700 font-semibold text-xs flex items-center gap-1">
+                                        ⚡ Disponible immédiatement
+                                    </span>
+                                </div>
+                            @elseif($product->stock > 0)
                                 <span class="text-emerald-700 font-medium text-xs">
                                     En stock ({{ $product->stock }} disponibles)
                                 </span>
@@ -99,27 +108,34 @@
 
                     <!-- Quantité & Boutons d'Action -->
                     <div class="space-y-3 pt-1">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs font-medium text-[#1C1C1C]">Quantité :</span>
-                            <div class="inline-flex items-center border border-[#ECECEC] rounded-md bg-neutral-50 h-9 text-xs">
-                                <button 
-                                    type="button" 
-                                    @click="if(quantity > 1) quantity--" 
-                                    class="w-8 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] font-semibold cursor-pointer"
-                                >-</button>
-                                <span class="w-9 text-center font-semibold text-[#1C1C1C]" x-text="quantity"></span>
-                                <button 
-                                    type="button" 
-                                    @click="quantity++" 
-                                    class="w-8 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] font-semibold cursor-pointer"
-                                >+</button>
+                        @if($product->isDigital())
+                            <div class="flex items-center gap-2 text-xs text-[#6B7280]">
+                                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Licence personnelle unique (Téléchargement direct dans votre compte)</span>
                             </div>
-                        </div>
+                        @else
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-medium text-[#1C1C1C]">Quantité :</span>
+                                <div class="inline-flex items-center border border-[#ECECEC] rounded-md bg-neutral-50 h-9 text-xs">
+                                    <button 
+                                        type="button" 
+                                        @click="if(quantity > 1) quantity--" 
+                                        class="w-8 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] font-semibold cursor-pointer"
+                                    >-</button>
+                                    <span class="w-9 text-center font-semibold text-[#1C1C1C]" x-text="quantity"></span>
+                                    <button 
+                                        type="button" 
+                                        @click="quantity++" 
+                                        class="w-8 h-full flex items-center justify-center hover:bg-white text-[#1C1C1C] font-semibold cursor-pointer"
+                                    >+</button>
+                                </div>
+                            </div>
+                        @endif
 
                         <!-- CTA 1 : Ajouter au panier (Rouge BKO, 8-10px radius) -->
                         <button 
                             type="button"
-                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: quantity })"
+                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'quantity' }} })"
                             class="w-full h-11 bg-[#E31E24] hover:bg-[#C9171D] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-2 smooth-transition cursor-pointer"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -127,23 +143,28 @@
                                 <circle cx="19" cy="21" r="1"></circle>
                                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
                             </svg>
-                            <span>Ajouter au panier</span>
+                            <span>{{ $product->isDigital() ? 'Ajouter au panier' : 'Ajouter au panier' }}</span>
                         </button>
 
                         <!-- CTA 2 : Acheter maintenant -->
                         <button 
                             type="button"
-                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: quantity }); window.location.href = '{{ route('checkout') }}';"
+                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'quantity' }} }); window.location.href = '{{ route('checkout') }}';"
                             class="w-full h-10 bg-[#111111] hover:bg-neutral-800 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 smooth-transition cursor-pointer"
                         >
-                            <span>Acheter maintenant</span>
+                            <span>{{ $product->isDigital() ? 'Acheter et télécharger' : 'Acheter maintenant' }}</span>
                         </button>
                     </div>
 
                     <!-- Conditions Livraison Bamako & Paiement -->
                     <div class="mt-5 p-3.5 rounded-lg bg-[#F8F8F8] border border-[#ECECEC] space-y-2 text-xs text-[#6B7280]">
-                        <p><strong class="text-[#1C1C1C]">Livraison :</strong> Livraison dans tous les quartiers de Bamako sous 3h (1 500 FCFA, offerte dès 50 000 FCFA).</p>
-                        <p><strong class="text-[#1C1C1C]">Paiement :</strong> Orange Money Mali (#144#) ou espèces à la livraison.</p>
+                        @if($product->isDigital())
+                            <p><strong class="text-[#1C1C1C]">Livraison :</strong> Immédiate et gratuite. Vos fichiers seront disponibles dans votre espace client et envoyés par email.</p>
+                            <p><strong class="text-[#1C1C1C]">Paiement :</strong> Orange Money Mali (#144#) sécurisé.</p>
+                        @else
+                            <p><strong class="text-[#1C1C1C]">Livraison :</strong> Livraison dans tous les quartiers de Bamako sous 3h (1 500 FCFA, offerte dès 50 000 FCFA).</p>
+                            <p><strong class="text-[#1C1C1C]">Paiement :</strong> Orange Money Mali (#144#) ou espèces à la livraison.</p>
+                        @endif
                     </div>
                 </div>
 
