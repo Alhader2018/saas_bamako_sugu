@@ -255,4 +255,91 @@ class SecurityAccessTest extends TestCase
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
+
+    public function test_orange_money_return_page_does_not_mark_pending_order_as_paid(): void
+    {
+        $order = Order::create([
+            'order_number' => 'BKO-TEST-PENDING-001',
+            'tracking_token' => 'TOKEN_PENDING_XYZ',
+            'customer_first_name' => 'Moussa',
+            'customer_last_name' => 'Keita',
+            'customer_phone' => '+223 76 00 00 01',
+            'city' => 'Bamako',
+            'neighborhood' => 'Hamdallaye',
+            'address' => 'Rue 10',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => 5000,
+            'delivery_fee' => 0,
+            'total' => 5000,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withSession([
+            'accessible_order_tokens.' . $order->order_number => $order->tracking_token,
+        ])->get('/checkout/orange/return?order_id=' . $order->order_number);
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Paiement Orange Money validé');
+        $response->assertSee('Validation Orange Money en cours');
+    }
+
+    public function test_orange_money_return_page_displays_success_only_when_paid(): void
+    {
+        $order = Order::create([
+            'order_number' => 'BKO-TEST-PAID-001',
+            'tracking_token' => 'TOKEN_PAID_XYZ',
+            'customer_first_name' => 'Awa',
+            'customer_last_name' => 'Traore',
+            'customer_phone' => '+223 76 00 00 02',
+            'city' => 'Bamako',
+            'neighborhood' => 'ACI 2000',
+            'address' => 'Rue 20',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'paid',
+            'subtotal' => 5000,
+            'delivery_fee' => 0,
+            'total' => 5000,
+            'status' => 'confirmed',
+            'orange_money_transaction_id' => 'OM-TXN-9999',
+        ]);
+
+        $response = $this->withSession([
+            'accessible_order_tokens.' . $order->order_number => $order->tracking_token,
+        ])->get('/checkout/orange/return?order_id=' . $order->order_number);
+
+        $response->assertStatus(200);
+        $response->assertSee('Paiement Orange Money validé');
+        $response->assertSee('OM-TXN-9999');
+    }
+
+    public function test_orange_money_return_page_does_not_validate_order_with_status_confirmed_if_payment_pending(): void
+    {
+        // Cas exact rapporté : commande avec status='confirmed' mais payment_status='pending' (ex: BKO-2026-E082F)
+        $order = Order::create([
+            'order_number' => 'BKO-2026-E082F',
+            'tracking_token' => 'TOKEN_LEGACY_E082F',
+            'customer_first_name' => 'Client',
+            'customer_last_name' => 'BKO',
+            'customer_phone' => '+223 70 00 00 00',
+            'city' => 'Bamako',
+            'neighborhood' => 'Hamdallaye',
+            'address' => 'Rue 1',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => 5000,
+            'delivery_fee' => 0,
+            'total' => 5000,
+            'status' => 'confirmed',
+        ]);
+
+        $response = $this->withSession([
+            'accessible_order_tokens.' . $order->order_number => $order->tracking_token,
+        ])->get('/checkout/orange/return?order_id=' . $order->order_number);
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Paiement Orange Money validé');
+        $response->assertSee('Validation Orange Money en cours');
+    }
 }
+

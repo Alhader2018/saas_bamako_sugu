@@ -182,7 +182,7 @@ class CheckoutForm extends Component
                     'delivery_fee' => $deliveryFee,
                     'discount' => 0,
                     'total' => $grandTotal,
-                    'status' => 'confirmed',
+                    'status' => $this->paymentMethod === 'orange_money' ? 'pending' : 'confirmed',
                 ]);
 
                 foreach ($orderItemsData as $itemData) {

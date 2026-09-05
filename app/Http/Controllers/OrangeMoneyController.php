@@ -34,23 +34,32 @@ class OrangeMoneyController extends Controller
                 abort(403, 'Vous n\'avez pas l\'autorisation de consulter cette commande.');
             }
 
-            // Tenter de vérifier le statut auprès de l'API Orange Money
-            try {
-                if (config('services.orange_money.client_id')) {
-                    $statusData = $this->orangeMoneyService->checkTransactionStatus($order);
-                    $status = strtolower($statusData['status'] ?? '');
+            // Tenter de vérifier le statut auprès de l'API Orange Money si pas encore validé
+            if ($order->payment_status !== 'paid') {
+                try {
+                    if (config('services.orange_money.client_id')) {
+                        $statusData = $this->orangeMoneyService->checkTransactionStatus($order);
+                        $status = strtolower($statusData['status'] ?? '');
 
-                    if (in_array($status, ['success', 'successful', 'completed'])) {
-                        $order->update([
-                            'payment_status' => 'paid',
-                            'status' => 'confirmed',
-                            'orange_money_transaction_id' => $statusData['txnid'] ?? $order->orange_money_transaction_id,
-                        ]);
+                        if (in_array($status, ['success', 'successful', 'completed'])) {
+                            $order->update([
+                                'payment_status' => 'paid',
+                                'status' => 'confirmed',
+                                'orange_money_transaction_id' => $statusData['txnid'] ?? $order->orange_money_transaction_id,
+                            ]);
+                        } elseif (in_array($status, ['failed', 'expired', 'declined', 'cancelled'])) {
+                            $order->update([
+                                'payment_status' => 'failed',
+                                'status' => 'cancelled',
+                            ]);
+                        }
                     }
+                } catch (\Throwable $e) {
+                    Log::warning('Vérification Orange Money en retour: ' . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                Log::warning('Vérification Orange Money en retour: ' . $e->getMessage());
             }
+
+            $order = $order->fresh();
 
             return view('store.orange-return', [
                 'order' => $order,
@@ -77,7 +86,10 @@ class OrangeMoneyController extends Controller
                 
                 if ($isOwner || $hasSessionAccess || (auth()->check() && auth()->user()->isStaff())) {
                     if ($order->payment_status !== 'paid') {
-                        $order->update(['payment_status' => 'cancelled']);
+                        $order->update([
+                            'payment_status' => 'cancelled',
+                            'status' => 'cancelled',
+                        ]);
                     }
                 }
             }
