@@ -10,8 +10,10 @@ use App\Models\Product;
 use App\Models\ProductFile;
 use App\Models\User;
 use App\Services\CartService;
+use App\Mail\DigitalProductAccessMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -305,5 +307,149 @@ class DigitalProductTest extends TestCase
         $checkoutResponse->assertSee('Guide Réussite Concours');
         $checkoutResponse->assertDontSee('Votre panier est vide');
     }
+
+    public function test_paying_digital_order_automatically_sends_email_with_download_link(): void
+    {
+        Mail::fake();
+        Storage::fake('local');
+
+        $category = Category::create([
+            'name' => 'E-books PDF',
+            'slug' => 'ebooks-pdf',
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Formation Laravel 11 BKO',
+            'slug' => 'formation-laravel-11-bko',
+            'reference' => 'BKO-LRV-001',
+            'price' => 15000,
+            'stock' => 9999,
+            'product_type' => 'digital',
+            'digital_type' => 'course',
+            'access_type' => 'file_download',
+            'description' => 'Formation complète',
+        ]);
+
+        $file = ProductFile::create([
+            'product_id' => $product->id,
+            'name' => 'Guide Complet Laravel',
+            'file_name' => 'Guide_Complet_Laravel.pdf',
+            'file_path' => 'digital_products/guide.pdf',
+            'file_size' => 2048576,
+            'file_extension' => 'pdf',
+            'mime_type' => 'application/pdf',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BKO-TEST-MAIL-001',
+            'tracking_token' => 'TOKEN_MAIL_123',
+            'customer_first_name' => 'Amadou',
+            'customer_last_name' => 'Coulibaly',
+            'customer_phone' => '+223 70 11 22 33',
+            'customer_email' => 'amadou.coulibaly@test.ml',
+            'city' => 'Bamako',
+            'neighborhood' => 'En ligne',
+            'address' => 'En ligne',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => 15000,
+            'delivery_fee' => 0,
+            'total' => 15000,
+            'status' => 'pending',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_type' => 'digital',
+            'product_name' => $product->name,
+            'price' => 15000,
+            'quantity' => 1,
+            'total' => 15000,
+        ]);
+
+        // Aucun email n'est envoyé tant que la commande est en attente
+        Mail::assertNothingSent();
+
+        // Le paiement est validé (ex: retour Orange Money ou confirmation admin)
+        $order->update(['payment_status' => 'paid']);
+
+        // Un email contenant le lien de téléchargement doit avoir été expédié
+        Mail::assertSent(DigitalProductAccessMail::class, function ($mail) use ($order, $file) {
+            $this->assertTrue($mail->hasTo('amadou.coulibaly@test.ml'));
+            $renderedHtml = $mail->render();
+            // L'email doit contenir le numéro de commande, le nom du fichier et le lien de téléchargement
+            $this->assertStringContainsString($order->order_number, $renderedHtml);
+            $this->assertStringContainsString('Guide_Complet_Laravel.pdf', $renderedHtml);
+            $expectedDownloadUrl = route('digital.download', [
+                'orderNumber' => $order->order_number,
+                'fileId' => $file->id,
+            ]);
+            $this->assertStringContainsString($expectedDownloadUrl, $renderedHtml);
+
+            return true;
+        });
+    }
+
+    public function test_admin_can_manually_resend_download_links_by_email(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+        ]);
+
+        $product = Product::create([
+            'category_id' => $this->category->id,
+            'name' => 'Ebook Recettes Maliennes',
+            'slug' => 'ebook-recettes-maliennes',
+            'reference' => 'BKO-REC-001',
+            'price' => 5000,
+            'stock' => 9999,
+            'product_type' => 'digital',
+            'digital_type' => 'ebook',
+            'access_type' => 'file_download',
+            'description' => 'Recettes',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BKO-RESEND-001',
+            'tracking_token' => 'TOKEN_RESEND_XYZ',
+            'customer_first_name' => 'Fatoumata',
+            'customer_last_name' => 'Diarra',
+            'customer_phone' => '+223 75 00 00 00',
+            'customer_email' => 'fatou@test.ml',
+            'city' => 'Bamako',
+            'neighborhood' => 'En ligne',
+            'address' => 'En ligne',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'paid',
+            'subtotal' => 5000,
+            'delivery_fee' => 0,
+            'total' => 5000,
+            'status' => 'confirmed',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_type' => 'digital',
+            'product_name' => $product->name,
+            'price' => 5000,
+            'quantity' => 1,
+            'total' => 5000,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.orders.resend-digital', $order));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        Mail::assertSent(DigitalProductAccessMail::class, function ($mail) {
+            return $mail->hasTo('fatou@test.ml');
+        });
+    }
 }
+
 

@@ -119,7 +119,24 @@ class AdminOrderController extends Controller
 
     public function print(Order $order)
     {
-        $order->load('items');
+        $order->load('items.product');
+
         return view('admin.orders.print', compact('order'));
+    }
+
+    public function resendDigitalAccess(Order $order)
+    {
+        if (!$order->hasDigitalItems()) {
+            return redirect()->back()->with('error', 'Cette commande ne contient aucun produit numérique.');
+        }
+
+        $sent = \App\Services\DigitalProductDeliveryService::resend($order);
+
+        if ($sent) {
+            $email = $order->customer_email ?: $order->user?->email;
+            return redirect()->back()->with('success', "Les liens de téléchargement ont été renvoyés avec succès à {$email}.");
+        }
+
+        return redirect()->back()->with('error', "Impossible d'envoyer l'email : aucune adresse email valide associée à cette commande.");
     }
 }

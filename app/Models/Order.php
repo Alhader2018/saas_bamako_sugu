@@ -43,6 +43,15 @@ class Order extends Model
         'total' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::updated(function (Order $order) {
+            if ($order->wasChanged('payment_status') && $order->payment_status === 'paid' && $order->hasDigitalItems()) {
+                \App\Services\DigitalProductDeliveryService::sendDeliveryIfPaid($order);
+            }
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

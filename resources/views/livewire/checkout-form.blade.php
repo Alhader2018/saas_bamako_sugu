@@ -69,6 +69,14 @@
                                 @endif
                             @endforeach
                         </div>
+                        @if($createdOrder->isPaid() && $createdOrder->customer_email)
+                            <div class="mt-3 pt-3 border-t border-emerald-200/60 flex items-center gap-2 text-[11px] text-emerald-800">
+                                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                <span>Les liens de téléchargement ont également été envoyés à votre email : <strong>{{ $createdOrder->customer_email }}</strong>.</span>
+                            </div>
+                        @endif
                     @else
                         <p class="text-xs text-amber-800">
                             Vos liens de téléchargement seront activés automatiquement dès confirmation de votre règlement Orange Money ou par le livreur.

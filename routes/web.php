@@ -89,6 +89,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(fun
     Route::post('/commandes/{order}/statut', [\App\Http\Controllers\AdminOrderController::class, 'updateStatus'])->name('orders.status');
     Route::post('/commandes/action-groupee', [\App\Http\Controllers\AdminOrderController::class, 'bulkAction'])->name('orders.bulk');
     Route::get('/commandes/{order}/imprimer', [\App\Http\Controllers\AdminOrderController::class, 'print'])->name('orders.print');
+    Route::post('/commandes/{order}/renvoyer-telechargements', [\App\Http\Controllers\AdminOrderController::class, 'resendDigitalAccess'])->name('orders.resend-digital');
 
     // Produits (Products)
     Route::get('/produits', [\App\Http\Controllers\AdminProductController::class, 'index'])->name('products.index');
