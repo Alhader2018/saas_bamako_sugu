@@ -261,4 +261,49 @@ class DigitalProductTest extends TestCase
         ]));
         $response->assertStatus(403);
     }
+
+    public function test_buy_now_adds_digital_product_to_cart_and_redirects_to_checkout(): void
+    {
+        $category = Category::create([
+            'name' => 'E-books Test BuyNow',
+            'slug' => 'ebooks-test-buynow',
+            'is_active' => true,
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Guide Réussite Concours',
+            'slug' => 'guide-reussite-concours',
+            'reference' => 'BKO-BUYNOW-001',
+            'price' => 7500,
+            'stock' => 9999,
+            'product_type' => 'digital',
+            'digital_type' => 'pdf',
+            'access_type' => 'file_download',
+            'image_url' => 'https://example.com/guide.jpg',
+            'description' => 'Guide test',
+        ]);
+
+        // Clic sur "Acheter et télécharger" -> POST /panier/acheter/{product}
+        $response = $this->post(route('cart.buy-now', $product), [
+            'quantity' => 1,
+        ]);
+
+        // Doit rediriger immédiatement vers la page de commande (/commander)
+        $response->assertRedirect(route('checkout'));
+
+        // Le panier doit contenir le produit avec une quantité de 1
+        $cart = session()->get('bko_cart');
+        $this->assertIsArray($cart);
+        $this->assertArrayHasKey($product->id, $cart);
+        $this->assertEquals(1, $cart[$product->id]['quantity']);
+        $this->assertEquals(7500, $cart[$product->id]['price']);
+
+        // Visite de la page checkout : le produit est bien présent
+        $checkoutResponse = $this->get(route('checkout'));
+        $checkoutResponse->assertStatus(200);
+        $checkoutResponse->assertSee('Guide Réussite Concours');
+        $checkoutResponse->assertDontSee('Votre panier est vide');
+    }
 }
+

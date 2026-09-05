@@ -108,4 +108,13 @@ class StoreController extends Controller
     {
         return view('store.checkout');
     }
+
+    public function buyNow(Request $request, Product $product)
+    {
+        $quantity = $product->isDigital() ? 1 : max(1, (int) $request->input('quantity', 1));
+        \App\Services\CartService::add($product->id, $quantity);
+
+        return redirect()->route('checkout');
+    }
 }
+

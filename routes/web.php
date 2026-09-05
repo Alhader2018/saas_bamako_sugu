@@ -68,6 +68,7 @@ Route::get('/', [StoreController::class, 'index'])->name('home');
 Route::get('/catalogue', [StoreController::class, 'catalog'])->name('catalog');
 Route::get('/produit/{slug}', [StoreController::class, 'show'])->name('product.show');
 Route::get('/commander', [StoreController::class, 'checkout'])->middleware('throttle:checkout')->name('checkout');
+Route::post('/panier/acheter/{product}', [StoreController::class, 'buyNow'])->name('cart.buy-now');
 
 // Orange Money WebPayment Callbacks
 Route::get('/checkout/orange/return', [OrangeMoneyController::class, 'return'])->name('checkout.orange.return');

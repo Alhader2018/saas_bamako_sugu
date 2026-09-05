@@ -146,14 +146,24 @@
                             <span>{{ $product->isDigital() ? 'Ajouter au panier' : 'Ajouter au panier' }}</span>
                         </button>
 
-                        <!-- CTA 2 : Acheter maintenant -->
-                        <button 
-                            type="button"
-                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'quantity' }} }); window.location.href = '{{ route('checkout') }}';"
-                            class="w-full h-10 bg-[#111111] hover:bg-neutral-800 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 smooth-transition cursor-pointer"
-                        >
-                            <span>{{ $product->isDigital() ? 'Acheter et télécharger' : 'Acheter maintenant' }}</span>
-                        </button>
+                        <!-- CTA 2 : Acheter maintenant / Acheter et télécharger -->
+                        <form action="{{ route('cart.buy-now', $product) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="quantity" :value="{{ $product->isDigital() ? '1' : 'quantity' }}" value="1">
+                            <button 
+                                type="submit"
+                                class="w-full h-10 bg-[#111111] hover:bg-neutral-800 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 smooth-transition cursor-pointer"
+                            >
+                                @if($product->isDigital())
+                                    <svg class="w-4 h-4 text-[#F7B500]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span>Acheter et télécharger</span>
+                                @else
+                                    <span>Acheter maintenant</span>
+                                @endif
+                            </button>
+                        </form>
                     </div>
 
                     <!-- Conditions Livraison Bamako & Paiement -->
