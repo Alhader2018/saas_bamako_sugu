@@ -117,6 +117,22 @@ class StoreController extends Controller
         return redirect()->route('checkout');
     }
 
+    public function addToCart(Request $request, Product $product)
+    {
+        $quantity = $product->isDigital() ? 1 : max(1, (int) $request->input('quantity', 1));
+        \App\Services\CartService::add($product->id, $quantity);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Produit ajouté au panier BKO SU !',
+                'count' => \App\Services\CartService::count(),
+            ]);
+        }
+
+        return back()->with('success', 'Produit ajouté au panier BKO SU !');
+    }
+
     public function invoice(Request $request, string $orderNumber)
     {
         $order = \App\Models\Order::where('order_number', $orderNumber)->firstOrFail();

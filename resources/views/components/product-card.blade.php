@@ -72,17 +72,43 @@
                 size="sm"
             />
 
-            <button 
-                type="button"
-                wire:click="$dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: 1 })"
-                class="h-7 px-2 bg-neutral-100 hover:bg-[#E31E24] hover:text-white text-[#1C1C1C] rounded text-xs font-semibold flex items-center gap-1 smooth-transition cursor-pointer"
-                title="Ajouter au panier"
-            >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-                <span class="hidden sm:inline">Ajouter</span>
-            </button>
+            @if($product->isDigital() || $product->stock > 0)
+                <button 
+                    type="button"
+                    x-data="{ added: false }"
+                    onclick="
+                        if (window.Livewire) {
+                            Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: 1 });
+                        } else {
+                            fetch('{{ route('cart.add', $product) }}', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                            }).then(() => window.location.reload());
+                        }
+                    "
+                    @click="added = true; setTimeout(() => added = false, 1200)"
+                    class="h-7 px-2 rounded text-xs font-semibold flex items-center gap-1 smooth-transition cursor-pointer"
+                    :class="added ? 'bg-emerald-600 text-white' : 'bg-neutral-100 hover:bg-[#E31E24] hover:text-white text-[#1C1C1C]'"
+                    title="Ajouter au panier"
+                >
+                    <span x-show="!added" class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <span class="hidden sm:inline">Ajouter</span>
+                    </span>
+                    <span x-show="added" x-cloak class="flex items-center gap-1 text-white">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                        <span class="hidden sm:inline">Ajouté</span>
+                    </span>
+                </button>
+            @else
+                <span class="h-7 px-2 bg-neutral-100 text-neutral-400 rounded text-xs font-medium flex items-center cursor-not-allowed" title="Rupture de stock">
+                    Épuisé
+                </span>
+            @endif
         </div>
     </div>
 </div>

@@ -135,7 +135,8 @@
                         <!-- CTA 1 : Ajouter au panier (Rouge BKO, 8-10px radius) -->
                         <button 
                             type="button"
-                            @click="Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'quantity' }} })"
+                            onclick="if(window.Livewire) { Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'parseInt(document.querySelector(\'[x-text=quantity]\')?.textContent || 1)' }} }); }"
+                            @click="if(window.Livewire) { Livewire.dispatch('add-to-cart', { productId: {{ $product->id }}, quantity: {{ $product->isDigital() ? '1' : 'quantity' }} }); }"
                             class="w-full h-11 bg-[#E31E24] hover:bg-[#C9171D] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-2 smooth-transition cursor-pointer"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">

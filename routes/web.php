@@ -69,6 +69,7 @@ Route::get('/catalogue', [StoreController::class, 'catalog'])->name('catalog');
 Route::get('/produit/{slug}', [StoreController::class, 'show'])->name('product.show');
 Route::get('/commander', [StoreController::class, 'checkout'])->middleware('throttle:checkout')->name('checkout');
 Route::post('/panier/acheter/{product}', [StoreController::class, 'buyNow'])->name('cart.buy-now');
+Route::post('/panier/ajouter/{product}', [StoreController::class, 'addToCart'])->name('cart.add');
 Route::get('/commande/{orderNumber}/facture', [StoreController::class, 'invoice'])->name('order.invoice');
 
 // Orange Money WebPayment Callbacks

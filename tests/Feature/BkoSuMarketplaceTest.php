@@ -182,4 +182,34 @@ class BkoSuMarketplaceTest extends TestCase
         CartService::clear();
         $this->assertEquals(0, CartService::count());
     }
+
+    public function test_product_card_contains_functional_add_to_cart_dispatch(): void
+    {
+        $product = Product::first();
+        $this->assertNotNull($product);
+
+        $response = $this->get('/');
+        $response->assertStatus(200);
+        $response->assertSee('add-to-cart');
+        $response->assertSee('Ajouter');
+    }
+
+    public function test_cart_add_endpoint_adds_item_and_returns_json(): void
+    {
+        $product = Product::first();
+        $this->assertNotNull($product);
+
+        CartService::clear();
+
+        $response = $this->postJson(route('cart.add', $product), [
+            'quantity' => 2,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $this->assertTrue(CartService::count() > 0);
+    }
 }
