@@ -116,5 +116,25 @@ class StoreController extends Controller
 
         return redirect()->route('checkout');
     }
+
+    public function invoice(Request $request, string $orderNumber)
+    {
+        $order = \App\Models\Order::where('order_number', $orderNumber)->firstOrFail();
+
+        // Protection IDOR : propriétaire, session, token URL ou staff
+        $isOwner = auth()->check() && (int) auth()->id() === (int) $order->user_id;
+        $hasSessionAccess = session()->get('accessible_order_tokens.' . $order->order_number) === $order->tracking_token;
+        $hasTokenParam = $request->query('token') && hash_equals((string) $order->tracking_token, (string) $request->query('token'));
+        $isStaff = auth()->check() && auth()->user()->isStaff();
+
+        if (!$isOwner && !$hasSessionAccess && !$hasTokenParam && !$isStaff) {
+            abort(403, 'Vous n\'avez pas l\'autorisation de consulter cette facture.');
+        }
+
+        $order->load('items.product');
+
+        return view('store.invoice', compact('order'));
+    }
 }
+
 

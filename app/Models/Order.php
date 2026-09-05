@@ -46,7 +46,7 @@ class Order extends Model
     protected static function booted(): void
     {
         static::updated(function (Order $order) {
-            if ($order->wasChanged('payment_status') && $order->payment_status === 'paid' && $order->hasDigitalItems()) {
+            if ($order->wasChanged('payment_status') && $order->payment_status === 'paid') {
                 \App\Services\DigitalProductDeliveryService::sendDeliveryIfPaid($order);
             }
         });

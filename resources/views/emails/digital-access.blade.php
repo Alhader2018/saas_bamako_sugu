@@ -138,21 +138,78 @@
                                 </a>
                             </div>
 
-                            <!-- Récapitulatif commande -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #4B5563; border-top: 1px solid #E4E4E7; padding-top: 15px; margin-top: 20px;">
-                                <tr>
-                                    <td style="padding-bottom: 6px;">Numéro de commande :</td>
-                                    <td align="right" style="padding-bottom: 6px; font-weight: 700; color: #111111;">{{ $order->order_number }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-bottom: 6px;">Mode de règlement :</td>
-                                    <td align="right" style="padding-bottom: 6px; font-weight: 600; color: #111111;">{{ $order->payment_method_label }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-bottom: 6px;">Montant réglé :</td>
-                                    <td align="right" style="padding-bottom: 6px; font-weight: 800; color: #E31E24; font-size: 14px;">{{ $order->formatted_total }}</td>
-                                </tr>
-                            </table>
+                            <!-- Facture Acquittée & Reçu Officiel -->
+                            <div style="background-color: #F9FAFB; border: 1px solid #E4E4E7; border-radius: 8px; padding: 18px; margin-top: 25px; margin-bottom: 20px;">
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; margin-bottom: 12px;">
+                                    <tr>
+                                        <td>
+                                            <div style="font-size: 13px; font-weight: 800; color: #111111;">FACTURE ACQUITTÉE N° FACT-{{ $order->order_number }}</div>
+                                            <div style="color: #6B7280; font-size: 11px; margin-top: 2px;">Émise le : {{ $order->created_at->format('d/m/Y') }}</div>
+                                        </td>
+                                        <td align="right">
+                                            <span style="display: inline-block; background-color: #DCFCE7; color: #15803D; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase;">
+                                                ✓ Réglée
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- Détail des articles -->
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; margin-top: 8px; margin-bottom: 12px;">
+                                    <tr style="background-color: #F3F4F6;">
+                                        <th align="left" style="padding: 8px 6px; font-size: 11px; text-transform: uppercase; color: #6B7280;">Désignation</th>
+                                        <th align="center" style="padding: 8px 6px; font-size: 11px; text-transform: uppercase; color: #6B7280;">Qté</th>
+                                        <th align="right" style="padding: 8px 6px; font-size: 11px; text-transform: uppercase; color: #6B7280;">Total</th>
+                                    </tr>
+                                    @foreach($order->items as $item)
+                                        <tr>
+                                            <td style="padding: 8px 6px; border-bottom: 1px solid #F3F4F6; color: #111111;">
+                                                <strong>{{ $item->product_name }}</strong>
+                                            </td>
+                                            <td align="center" style="padding: 8px 6px; border-bottom: 1px solid #F3F4F6; color: #4B5563;">
+                                                {{ $item->quantity }}
+                                            </td>
+                                            <td align="right" style="padding: 8px 6px; border-bottom: 1px solid #F3F4F6; font-weight: 700; color: #111111;">
+                                                {{ number_format($item->total, 0, ',', ' ') }} FCFA
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </table>
+
+                                <!-- Totaux & Paiement -->
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #4B5563;">
+                                    <tr>
+                                        <td style="padding-bottom: 4px;">Sous-total HT :</td>
+                                        <td align="right" style="padding-bottom: 4px;">{{ $order->formatted_subtotal }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 4px;">Frais de livraison :</td>
+                                        <td align="right" style="padding-bottom: 4px;">{{ $order->delivery_fee > 0 ? $order->formatted_delivery_fee : 'Offerte (0 FCFA)' }}</td>
+                                    </tr>
+                                    <tr style="font-size: 14px; font-weight: 800; color: #E31E24;">
+                                        <td style="padding-top: 6px; border-top: 1px solid #E5E7EB;">MONTANT TOTAL RÉGLÉ :</td>
+                                        <td align="right" style="padding-top: 6px; border-top: 1px solid #E5E7EB;">{{ $order->formatted_total }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #D1D5DB; font-size: 11px; color: #166534;">
+                                    ✓ Règlement reçu via <strong>{{ $order->payment_method_label }}</strong>
+                                    @if($order->orange_money_transaction_id)
+                                        (Réf. Transaction : {{ $order->orange_money_transaction_id }})
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Bouton Télécharger Facture Officielle -->
+                            <div style="text-align: center; margin-bottom: 25px;">
+                                <a 
+                                    href="{{ route('order.invoice', ['orderNumber' => $order->order_number, 'token' => $order->tracking_token]) }}"
+                                    target="_blank"
+                                    style="display: inline-block; background-color: #111111; color: #FFFFFF; font-size: 12px; font-weight: 700; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                                >
+                                    📄 Télécharger / Imprimer ma facture officielle (PDF)
+                                </a>
+                            </div>
 
                         </td>
                     </tr>

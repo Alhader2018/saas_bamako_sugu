@@ -52,6 +52,17 @@
                     </form>
                 @endif
 
+                @if($order->isPaid())
+                    <a href="{{ route('order.invoice', ['orderNumber' => $order->order_number]) }}" 
+                       target="_blank" 
+                       class="px-3.5 py-2 rounded-lg bg-white border border-[#D1D5DB] hover:bg-[#F9FAFB] text-[#374151] text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-[#6B7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Facture / Reçu</span>
+                    </a>
+                @endif
+
                 <a href="https://wa.me/22370000000?text={{ urlencode('Bonjour BKO SU, j\'ai une question concernant ma commande #' . $order->order_number) }}" 
                    target="_blank" 
                    class="px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">

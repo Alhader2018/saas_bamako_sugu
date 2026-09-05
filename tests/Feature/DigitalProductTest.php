@@ -11,6 +11,7 @@ use App\Models\ProductFile;
 use App\Models\User;
 use App\Services\CartService;
 use App\Mail\DigitalProductAccessMail;
+use App\Mail\OrderInvoiceMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -448,6 +449,98 @@ class DigitalProductTest extends TestCase
 
         Mail::assertSent(DigitalProductAccessMail::class, function ($mail) {
             return $mail->hasTo('fatou@test.ml');
+        });
+    }
+
+    public function test_invoice_access_with_valid_token_and_unauthorized_guest_rejected(): void
+    {
+        $order = Order::create([
+            'order_number' => 'BKO-INV-TEST-01',
+            'tracking_token' => 'INV_SECRET_TOKEN_999',
+            'customer_first_name' => 'Amadou',
+            'customer_last_name' => 'Kone',
+            'customer_phone' => '+223 70 11 22 33',
+            'customer_email' => 'amadou@test.ml',
+            'city' => 'Bamako',
+            'neighborhood' => 'ACI 2000',
+            'address' => 'Rue 123',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'paid',
+            'subtotal' => 15000,
+            'delivery_fee' => 1500,
+            'total' => 16500,
+            'status' => 'confirmed',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_name' => 'Montre Connectée Pro',
+            'price' => 15000,
+            'quantity' => 1,
+            'total' => 15000,
+        ]);
+
+        // 1. Accès sans token ni session ni auth -> 403 Forbidden
+        $response = $this->get(route('order.invoice', ['orderNumber' => $order->order_number]));
+        $response->assertStatus(403);
+
+        // 2. Accès avec mauvais token -> 403 Forbidden
+        $response = $this->get(route('order.invoice', [
+            'orderNumber' => $order->order_number,
+            'token' => 'WRONG_TOKEN',
+        ]));
+        $response->assertStatus(403);
+
+        // 3. Accès avec bon tracking_token (ex: lien cliqué dans l'email reçu) -> 200 OK
+        $response = $this->get(route('order.invoice', [
+            'orderNumber' => $order->order_number,
+            'token' => 'INV_SECRET_TOKEN_999',
+        ]));
+        $response->assertStatus(200);
+        $response->assertSee('Facture Acquittée');
+        $response->assertSee('BKO-INV-TEST-01');
+        $response->assertSee('Amadou Kone');
+        $response->assertSee('Montre Connectée Pro');
+        $response->assertSee('16 500 FCFA');
+    }
+
+    public function test_physical_order_triggers_invoice_mail_when_paid(): void
+    {
+        Mail::fake();
+
+        $order = Order::create([
+            'order_number' => 'BKO-PHYS-999',
+            'tracking_token' => 'PHYS_TOKEN_123',
+            'customer_first_name' => 'Mariam',
+            'customer_last_name' => 'Traore',
+            'customer_phone' => '+223 76 00 11 22',
+            'customer_email' => 'mariam@test.ml',
+            'city' => 'Bamako',
+            'neighborhood' => 'Hamdallaye',
+            'address' => 'Porte 5',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => 25000,
+            'delivery_fee' => 1000,
+            'total' => 26000,
+            'status' => 'pending',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_name' => 'Chaussures Cuir',
+            'product_type' => 'physical',
+            'price' => 25000,
+            'quantity' => 1,
+            'total' => 25000,
+        ]);
+
+        // Mise à jour vers 'paid' -> doit déclencher OrderInvoiceMail
+        $order->update(['payment_status' => 'paid']);
+
+        Mail::assertSent(OrderInvoiceMail::class, function ($mail) use ($order) {
+            return $mail->hasTo('mariam@test.ml') &&
+                   $mail->order->id === $order->id;
         });
     }
 }

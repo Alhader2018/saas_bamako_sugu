@@ -9,7 +9,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class DigitalProductAccessMail extends Mailable
+class OrderInvoiceMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -20,14 +20,14 @@ class DigitalProductAccessMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Vos liens de téléchargement & Facture acquittée — Commande {$this->order->order_number} (BKO SU)",
+            subject: "Votre facture acquittée — Commande {$this->order->order_number} (BKO SU)",
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.digital-access',
+            view: 'emails.order-invoice',
         );
     }
 }

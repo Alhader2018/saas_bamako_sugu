@@ -14,14 +14,14 @@ class DigitalProductDeliveryService
      */
     public static function sendDeliveryIfPaid(Order $order): bool
     {
-        if (!$order->isPaid() || !$order->hasDigitalItems()) {
+        if (!$order->isPaid()) {
             return false;
         }
 
         $email = trim((string) ($order->customer_email ?: $order->user?->email));
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Log::warning("Impossible d'envoyer les liens de téléchargement pour la commande {$order->order_number} : aucune adresse email valide.");
+            Log::warning("Impossible d'envoyer l'email pour la commande {$order->order_number} : aucune adresse email valide.");
             return false;
         }
 
@@ -29,12 +29,17 @@ class DigitalProductDeliveryService
             // Charger les relations nécessaires pour le template
             $order->loadMissing('items.product.files', 'user');
 
-            Mail::to($email)->send(new DigitalProductAccessMail($order));
+            if ($order->hasDigitalItems()) {
+                Mail::to($email)->send(new DigitalProductAccessMail($order));
+                Log::info("Liens de téléchargement et facture acquittée envoyés par email pour la commande {$order->order_number} à {$email}");
+            } else {
+                Mail::to($email)->send(new \App\Mail\OrderInvoiceMail($order));
+                Log::info("Facture acquittée envoyée par email pour la commande {$order->order_number} à {$email}");
+            }
 
-            Log::info("Liens de téléchargement envoyés avec succès par email pour la commande {$order->order_number} à {$email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Échec lors de l'envoi de l'email de téléchargement pour la commande {$order->order_number} : " . $e->getMessage());
+            Log::error("Échec lors de l'envoi de l'email de facture pour la commande {$order->order_number} : " . $e->getMessage());
             return false;
         }
     }
