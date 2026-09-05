@@ -118,9 +118,18 @@
 
             <!-- Notice Orange Money si sélectionné -->
             @if($createdOrder->payment_method === 'orange_money' && !$createdOrder->isPaid())
-                <div class="bg-amber-50 rounded-lg p-3 border border-amber-200 text-left text-xs mb-6 text-amber-900">
-                    <p class="font-semibold text-[#111111] mb-0.5">Validation Orange Money :</p>
-                    <p>Un message a été envoyé au numéro <strong>{{ $createdOrder->orange_money_number }}</strong>. Tapez <strong>#144#</strong> pour autoriser le paiement.</p>
+                <div class="bg-amber-50 rounded-lg p-4 border border-amber-200 text-left text-xs mb-6 text-amber-900">
+                    <p class="font-semibold text-[#111111] mb-1">Validation Orange Money :</p>
+                    <p class="mb-3">Un message a été envoyé au numéro <strong>{{ $createdOrder->orange_money_number }}</strong>. Tapez <strong>#144#</strong> pour autoriser le paiement, ou cliquez ci-dessous pour payer directement en ligne :</p>
+                    <a 
+                        href="{{ route('checkout.orange.retry', ['orderNumber' => $createdOrder->order_number]) }}"
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#E31E24] hover:bg-[#C9171D] text-white font-semibold text-xs rounded-lg transition-colors shadow-sm"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Payer maintenant avec Orange Money
+                    </a>
                 </div>
             @endif
 

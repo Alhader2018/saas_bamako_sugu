@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Services\CartService;
 use App\Services\OrangeMoneyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -90,12 +91,69 @@ class OrangeMoneyController extends Controller
                             'payment_status' => 'cancelled',
                             'status' => 'cancelled',
                         ]);
+
+                        // Restaurer les articles dans le panier pour éviter un écran vide au checkout
+                        CartService::clear();
+                        foreach ($order->items as $item) {
+                            if ($item->product_id) {
+                                CartService::add($item->product_id, $item->quantity);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        return redirect()->route('checkout')->with('error', 'Le paiement Orange Money a été annulé. Vous pouvez réessayer ou choisir le paiement en espèces.');
+        return redirect()->route('checkout')->with('error', 'Le paiement Orange Money a été annulé. Vos articles sont restés dans votre panier : vous pouvez réessayer ou choisir un autre moyen.');
+    }
+
+    public function retry(Request $request, string $orderNumber)
+    {
+        $order = Order::where('order_number', $orderNumber)
+            ->orWhere('orange_money_order_id', $orderNumber)
+            ->first();
+
+        if (!$order) {
+            return redirect()->route('checkout')->with('error', 'Commande introuvable.');
+        }
+
+        // Protection IDOR : vérifier que la commande appartient à l'acheteur ou à la session en cours
+        $isOwner = auth()->check() && (int) auth()->id() === (int) $order->user_id;
+        $hasSessionAccess = session()->get('accessible_order_tokens.' . $order->order_number) === $order->tracking_token;
+        $isStaff = auth()->check() && auth()->user()->isStaff();
+
+        if (!$isOwner && !$hasSessionAccess && !$isStaff) {
+            abort(403, 'Vous n\'avez pas l\'autorisation de modifier cette commande.');
+        }
+
+        // Si la commande est déjà payée, rediriger vers la page de retour
+        if ($order->payment_status === 'paid') {
+            return redirect()->route('checkout.orange.return', ['order_id' => $order->order_number])
+                ->with('info', 'Cette commande a déjà été réglée.');
+        }
+
+        // 1. Tenter d'initier un nouveau WebPayment Orange Money si l'API est configurée
+        if (config('services.orange_money.client_id') && config('services.orange_money.merchant_key')) {
+            try {
+                $paymentData = $this->orangeMoneyService->createWebPayment($order);
+                if (!empty($paymentData['payment_url'])) {
+                    return redirect()->away($paymentData['payment_url']);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Erreur réessai Orange Money WebPayment: ' . $e->getMessage());
+            }
+        }
+
+        // 2. Si l'API Orange Money n'est pas encore connectée ou a échoué :
+        // Restaurer les articles dans le panier et renvoyer sur le formulaire de commande
+        CartService::clear();
+        foreach ($order->items as $item) {
+            if ($item->product_id) {
+                CartService::add($item->product_id, $item->quantity);
+            }
+        }
+
+        return redirect()->route('checkout')->with('info', 'Vos articles ont été réintégrés à votre panier. Vous pouvez retenter votre commande.');
     }
 
     public function notif(Request $request)

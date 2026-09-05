@@ -341,5 +341,108 @@ class SecurityAccessTest extends TestCase
         $response->assertDontSee('Paiement Orange Money validé');
         $response->assertSee('Validation Orange Money en cours');
     }
+
+    public function test_orange_money_retry_restores_cart_and_redirects_to_checkout(): void
+    {
+        $product = Product::first();
+        $this->assertNotNull($product);
+
+        $order = Order::create([
+            'order_number' => 'BKO-TEST-RETRY-001',
+            'tracking_token' => 'TOKEN_RETRY_123',
+            'customer_first_name' => 'Fanta',
+            'customer_last_name' => 'Diarra',
+            'customer_phone' => '+223 70 12 34 56',
+            'city' => 'Bamako',
+            'neighborhood' => 'ACI 2000',
+            'address' => 'Rue 12',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => $product->price,
+            'delivery_fee' => 0,
+            'total' => $product->price,
+            'status' => 'pending',
+        ]);
+
+        \App\Models\OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_type' => 'physical',
+            'product_name' => $product->name,
+            'product_image' => $product->image_url,
+            'price' => $product->price,
+            'quantity' => 2,
+            'total' => $product->price * 2,
+        ]);
+
+        // Vider le panier
+        \App\Services\CartService::clear();
+        $this->assertEquals(0, \App\Services\CartService::count());
+
+        // Clic sur "Réessayer le paiement"
+        $response = $this->withSession([
+            'accessible_order_tokens.' . $order->order_number => $order->tracking_token,
+        ])->get('/checkout/orange/retry/' . $order->order_number);
+
+        $response->assertRedirect(route('checkout'));
+
+        // Le panier doit être restauré avec les articles de la commande
+        $cart = session()->get('bko_cart');
+        $this->assertIsArray($cart);
+        $this->assertArrayHasKey($product->id, $cart);
+        $this->assertEquals(2, $cart[$product->id]['quantity']);
+    }
+
+    public function test_orange_money_cancel_restores_cart_items(): void
+    {
+        $product = Product::first();
+        $this->assertNotNull($product);
+
+        $order = Order::create([
+            'order_number' => 'BKO-TEST-CANCEL-001',
+            'tracking_token' => 'TOKEN_CANCEL_123',
+            'customer_first_name' => 'Adama',
+            'customer_last_name' => 'Kone',
+            'customer_phone' => '+223 76 99 88 77',
+            'city' => 'Bamako',
+            'neighborhood' => 'Hippodrome',
+            'address' => 'Rue 4',
+            'payment_method' => 'orange_money',
+            'payment_status' => 'pending',
+            'subtotal' => $product->price,
+            'delivery_fee' => 1500,
+            'total' => $product->price + 1500,
+            'status' => 'pending',
+        ]);
+
+        \App\Models\OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_type' => 'physical',
+            'product_name' => $product->name,
+            'product_image' => $product->image_url,
+            'price' => $product->price,
+            'quantity' => 1,
+            'total' => $product->price,
+        ]);
+
+        \App\Services\CartService::clear();
+
+        // Retour après annulation sur Orange Money
+        $response = $this->withSession([
+            'accessible_order_tokens.' . $order->order_number => $order->tracking_token,
+        ])->get('/checkout/orange/cancel?order_id=' . $order->order_number);
+
+        $response->assertRedirect(route('checkout'));
+
+        $order->refresh();
+        $this->assertEquals('cancelled', $order->payment_status);
+
+        // Les articles doivent être restaurés dans le panier
+        $cart = session()->get('bko_cart');
+        $this->assertIsArray($cart);
+        $this->assertArrayHasKey($product->id, $cart);
+    }
 }
+
 

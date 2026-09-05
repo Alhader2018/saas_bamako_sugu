@@ -73,6 +73,7 @@ Route::post('/panier/acheter/{product}', [StoreController::class, 'buyNow'])->na
 // Orange Money WebPayment Callbacks
 Route::get('/checkout/orange/return', [OrangeMoneyController::class, 'return'])->name('checkout.orange.return');
 Route::get('/checkout/orange/cancel', [OrangeMoneyController::class, 'cancel'])->name('checkout.orange.cancel');
+Route::match(['GET', 'POST'], '/checkout/orange/retry/{orderNumber}', [OrangeMoneyController::class, 'retry'])->name('checkout.orange.retry');
 Route::post('/checkout/orange/notif', [OrangeMoneyController::class, 'notif'])
     ->name('checkout.orange.notif')
     ->withoutMiddleware([ValidateCsrfToken::class]);

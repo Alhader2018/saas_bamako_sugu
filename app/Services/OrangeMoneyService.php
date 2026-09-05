@@ -10,9 +10,15 @@ class OrangeMoneyService
 {
     public function createWebPayment(Order $order): array
     {
-        $orderId = substr((string) $order->order_number, 0, 30);
+        // En cas de nouvelle tentative sur la même commande, générer un identifiant d'essai unique
+        $attemptId = $order->order_number;
+        if (!empty($order->orange_money_pay_token) || !empty($order->orange_money_order_id)) {
+            $attemptId = substr($order->order_number, 0, 24) . '-' . strtoupper(substr(uniqid(), -4));
+        }
+
+        $orderId = substr((string) $attemptId, 0, 30);
         $amount = (int) round((float) $order->grand_total);
-        $reference = substr('REF-' . $orderId, 0, 30);
+        $reference = substr('REF-' . $order->order_number, 0, 30);
 
         $payload = [
             'merchant_key' => $this->getMerchantKey(),
