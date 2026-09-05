@@ -98,13 +98,24 @@ class AdminProductController extends Controller
         ]);
 
         $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(5);
-        $validated['reference'] = $validated['reference'] ?: 'REF-' . strtoupper(Str::random(6));
+        $validated['reference'] = !empty($validated['reference']) ? $validated['reference'] : 'REF-' . strtoupper(Str::random(6));
         $validated['stock'] = $isDigital ? 9999 : (int) ($validated['stock'] ?? 0);
         $validated['access_type'] = $validated['access_type'] ?: 'file_download';
         $validated['is_flash_deal'] = $request->boolean('is_flash_deal');
         $validated['is_popular'] = $request->boolean('is_popular');
         $validated['is_new'] = $request->boolean('is_new');
         $validated['is_recommended'] = $request->boolean('is_recommended');
+        $validated['description'] = $validated['description'] ?? '';
+
+        // Support d'image par défaut ou upload si l'URL n'est pas renseignée
+        if ($request->hasFile('image_file') && $request->file('image_file')->isValid()) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        } elseif (empty($validated['image_url'])) {
+            $validated['image_url'] = $isDigital 
+                ? 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80'
+                : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
+        }
 
         if (!empty($validated['original_price']) && $validated['original_price'] > $validated['price']) {
             $validated['discount_percent'] = (int) round((($validated['original_price'] - $validated['price']) / $validated['original_price']) * 100);
@@ -178,6 +189,16 @@ class AdminProductController extends Controller
         $validated['is_popular'] = $request->boolean('is_popular');
         $validated['is_new'] = $request->boolean('is_new');
         $validated['is_recommended'] = $request->boolean('is_recommended');
+        $validated['description'] = $validated['description'] ?? '';
+
+        if ($request->hasFile('image_file') && $request->file('image_file')->isValid()) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        } elseif (empty($validated['image_url'])) {
+            $validated['image_url'] = $product->image_url ?: ($isDigital 
+                ? 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80'
+                : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80');
+        }
 
         if (!empty($validated['original_price']) && $validated['original_price'] > $validated['price']) {
             $validated['discount_percent'] = (int) round((($validated['original_price'] - $validated['price']) / $validated['original_price']) * 100);

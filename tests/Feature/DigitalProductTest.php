@@ -69,6 +69,37 @@ class DigitalProductTest extends TestCase
         $this->assertEquals('E-book / Livre numérique', $digitalProduct->digital_type_label);
     }
 
+    public function test_admin_can_create_digital_product_without_image_url(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.products.store'), [
+            'name' => 'Prepa ENA culture générale',
+            'category_id' => $this->category->id,
+            'product_type' => 'digital',
+            'digital_type' => 'pdf',
+            'access_type' => 'file_download',
+            'download_limit' => 5,
+            'price' => 5000,
+            // image_url et description intentionnellement omis
+        ]);
+
+        $response->assertRedirect(route('admin.products.index'));
+
+        $this->assertDatabaseHas('products', [
+            'name' => 'Prepa ENA culture générale',
+            'product_type' => 'digital',
+            'digital_type' => 'pdf',
+            'price' => 5000,
+        ]);
+
+        $createdProduct = Product::where('name', 'Prepa ENA culture générale')->first();
+        $this->assertNotNull($createdProduct->image_url);
+    }
+
     public function test_cart_service_handles_digital_quantities_and_zero_delivery_fee(): void
     {
         Session::start();

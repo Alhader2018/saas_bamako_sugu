@@ -162,11 +162,22 @@
                 <!-- 2. Médias & Image -->
                 <div class="bg-white border border-[#E5E7EB] rounded-lg p-5">
                     <h2 class="text-sm font-semibold text-[#111111] mb-4">Vignette / Couverture du Produit</h2>
-                    <div class="space-y-3 text-xs">
+                    <div class="space-y-4 text-xs">
                         <div>
-                            <label class="block font-medium text-[#374151] mb-1">URL de la couverture (Image principale)</label>
+                            <label class="block font-medium text-[#374151] mb-1">Téléverser une image depuis votre appareil</label>
+                            <input type="file" name="image_file" accept="image/*" class="w-full text-xs text-[#6B7280] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#111111] file:text-white hover:file:bg-black cursor-pointer">
+                        </div>
+
+                        <div class="relative flex py-1 items-center">
+                            <div class="flex-grow border-t border-[#ECECEC]"></div>
+                            <span class="flex-shrink mx-2 text-[11px] text-[#9CA3AF]">OU par lien URL</span>
+                            <div class="flex-grow border-t border-[#ECECEC]"></div>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-[#374151] mb-1">URL de l'image (Optionnel)</label>
                             <input type="url" name="image_url" value="{{ old('image_url') }}" placeholder="https://..." class="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-md focus:border-[#E31E24] focus:outline-none">
-                            <span class="text-[11px] text-[#6B7280] mt-1 block">Couverture du livre ou affiche de la formation visible sur la boutique.</span>
+                            <span class="text-[11px] text-[#6B7280] mt-1 block">Si vous ne téléversez rien, une image de couverture par défaut adaptée sera automatiquement attribuée.</span>
                         </div>
                     </div>
                 </div>
