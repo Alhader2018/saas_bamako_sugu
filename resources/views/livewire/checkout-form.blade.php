@@ -183,6 +183,18 @@
                             1. Coordonnées
                         </h2>
 
+                        @if($loadedFromCustomerProfile && $profileLoadedMessage)
+                            <div class="mb-3.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs text-emerald-800">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-[#16A34A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span class="font-medium">{{ $profileLoadedMessage }}</span>
+                                </div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Fiche client</span>
+                            </div>
+                        @endif
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <x-input 
@@ -205,7 +217,7 @@
                             <div>
                                 <x-input 
                                     label="Téléphone (+223)" 
-                                    wire:model="phone" 
+                                    wire:model.live.debounce.400ms="phone" 
                                     placeholder="+223 76 00 00 00" 
                                     :error="$errors->first('phone')"
                                     required
@@ -308,7 +320,7 @@
                             <!-- Orange Money -->
                             <label 
                                 wire:click="setPaymentMethod('orange_money')"
-                                class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer smooth-transition {{ $paymentMethod === 'orange_money' ? 'border-[#E31E24] bg-red-50/20' : 'border-[#ECECEC] hover:border-neutral-300' }}"
+                                class="flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer smooth-transition {{ $paymentMethod === 'orange_money' ? 'border-[#E31E24] bg-red-50/20' : 'border-[#ECECEC] hover:border-neutral-300' }}"
                             >
                                 <input 
                                     type="radio" 
@@ -320,19 +332,51 @@
                                 <div class="flex-1 text-xs">
                                     <div class="flex items-center justify-between">
                                         <span class="font-semibold text-[#1C1C1C]">Orange Money Mali</span>
-                                        <span class="text-[10px] bg-[#F7B500] text-[#111111] font-bold px-1.5 py-0.2 rounded">Recommandé</span>
+                                        <span class="text-[10px] bg-[#F7B500] text-[#111111] font-bold px-1.5 py-0.5 rounded">Recommandé</span>
                                     </div>
                                     <p class="text-[#6B7280] mt-0.5">Paiement instantané via votre numéro Orange Money (+223).</p>
 
                                     @if($paymentMethod === 'orange_money')
-                                        <div class="mt-2.5 pt-2.5 border-t border-[#ECECEC]">
-                                            <x-input 
-                                                label="Numéro Orange Money" 
-                                                wire:model="orangeMoneyNumber" 
-                                                placeholder="+223 76 00 00 00" 
-                                                :error="$errors->first('orangeMoneyNumber')"
-                                                required
-                                            />
+                                        <div class="mt-3 pt-3 border-t border-[#ECECEC] space-y-2.5" wire:click.stop>
+                                            <!-- Affichage du numéro direct du client -->
+                                            <div class="p-2.5 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB] flex items-center justify-between gap-2">
+                                                <div>
+                                                    <span class="text-[11px] text-[#6B7280] block">Numéro débité Orange Money :</span>
+                                                    <span class="font-bold text-[#1C1C1C] text-sm font-mono">
+                                                        {{ $useDifferentPaymentNumber ? ($orangeMoneyNumber ?: 'Non renseigné') : ($phone && $phone !== '+223 ' ? $phone : 'Même numéro que vos coordonnées') }}
+                                                    </span>
+                                                </div>
+                                                @if(!$useDifferentPaymentNumber && $phone && $phone !== '+223 ')
+                                                    <span class="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                                                        <svg class="w-3 h-3 text-[#16A34A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                        Numéro client direct
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            <!-- Option pour payer avec un autre numéro -->
+                                            <label class="flex items-center gap-2 cursor-pointer text-xs text-[#4B5563] select-none pt-0.5">
+                                                <input 
+                                                    type="checkbox" 
+                                                    wire:model.live="useDifferentPaymentNumber" 
+                                                    class="rounded border-[#D1D5DB] text-[#E31E24] focus:ring-[#E31E24] accent-[#E31E24]"
+                                                >
+                                                <span>Payer avec un autre numéro Orange Money</span>
+                                            </label>
+
+                                            @if($useDifferentPaymentNumber)
+                                                <div class="pt-1">
+                                                    <x-input 
+                                                        label="Autre numéro Orange Money (+223)" 
+                                                        wire:model="orangeMoneyNumber" 
+                                                        placeholder="+223 76 00 00 00" 
+                                                        :error="$errors->first('orangeMoneyNumber')"
+                                                        required
+                                                    />
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>

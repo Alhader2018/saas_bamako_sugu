@@ -24,6 +24,11 @@ class CheckoutForm extends Component
     // Paiement
     public string $paymentMethod = 'orange_money'; // 'orange_money', 'cash_on_delivery'
     public string $orangeMoneyNumber = '';
+    public bool $useDifferentPaymentNumber = false;
+
+    // Fiche client
+    public bool $loadedFromCustomerProfile = false;
+    public ?string $profileLoadedMessage = null;
 
     public bool $orderCompleted = false;
     public ?Order $createdOrder = null;
@@ -43,7 +48,17 @@ class CheckoutForm extends Component
             'address' => $isPurelyDigital ? 'nullable|string' : 'required|string|min:4',
             'deliveryNotes' => 'nullable|string',
             'paymentMethod' => $isPurelyDigital ? 'required|in:orange_money' : 'required|in:orange_money,cash_on_delivery',
-            'orangeMoneyNumber' => 'required_if:paymentMethod,orange_money',
+            'orangeMoneyNumber' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    if ($this->paymentMethod === 'orange_money') {
+                        $target = $this->useDifferentPaymentNumber ? $value : ($this->phone ?: $value);
+                        if (empty($target) || strlen(trim($target)) < 8 || trim($target) === '+223') {
+                            $fail('Veuillez renseigner votre numéro Orange Money.');
+                        }
+                    }
+                },
+            ],
         ];
     }
 
@@ -56,7 +71,6 @@ class CheckoutForm extends Component
             'email.required' => 'Votre adresse email est indispensable pour recevoir vos accès aux fichiers numériques.',
             'address.required' => 'Veuillez préciser votre adresse ou un repère connu.',
             'neighborhood.required' => 'Veuillez choisir votre quartier à Bamako.',
-            'orangeMoneyNumber.required_if' => 'Veuillez renseigner votre numéro Orange Money.',
             'paymentMethod.in' => 'Le paiement à la livraison n\'est pas disponible pour les produits numériques.',
         ];
     }
@@ -70,6 +84,119 @@ class CheckoutForm extends Component
         if (CartService::isPurelyDigital()) {
             $this->paymentMethod = 'orange_money';
         }
+
+        $this->loadCustomerProfileIfAvailable();
+    }
+
+    protected function loadCustomerProfileIfAvailable(): void
+    {
+        if (auth()->check()) {
+            $user = auth()->user();
+            $lastOrder = Order::where('user_id', $user->id)->latest()->first();
+
+            // Récupérer le nom et prénom
+            if (empty($this->firstName) && empty($this->lastName)) {
+                if ($lastOrder && !empty($lastOrder->customer_first_name)) {
+                    $this->firstName = $lastOrder->customer_first_name;
+                    $this->lastName = $lastOrder->customer_last_name ?: '';
+                } elseif (!empty($user->name)) {
+                    $parts = explode(' ', trim($user->name), 2);
+                    $this->firstName = $parts[0] ?? '';
+                    $this->lastName = $parts[1] ?? '';
+                }
+            }
+
+            // Téléphone
+            if (empty($this->phone) || $this->phone === '+223 ') {
+                $userPhone = $user->phone ?: ($lastOrder?->customer_phone ?? '');
+                if (!empty($userPhone)) {
+                    $this->phone = $userPhone;
+                }
+            }
+
+            // Email
+            if (empty($this->email)) {
+                $this->email = $user->email ?: ($lastOrder?->customer_email ?? '');
+            }
+
+            // Adresse
+            $defaultAddress = $user->defaultAddress;
+            if ($defaultAddress) {
+                $this->city = $defaultAddress->city ?: $this->city;
+                $this->neighborhood = $defaultAddress->neighborhood ?: $this->neighborhood;
+                $this->address = $defaultAddress->address ?: $this->address;
+            } elseif (!empty($user->neighborhood) || !empty($user->address)) {
+                $this->city = $user->city ?: $this->city;
+                $this->neighborhood = $user->neighborhood ?: $this->neighborhood;
+                $this->address = $user->address ?: $this->address;
+            } elseif ($lastOrder) {
+                $this->city = $lastOrder->city ?: $this->city;
+                $this->neighborhood = $lastOrder->neighborhood ?: $this->neighborhood;
+                $this->address = $lastOrder->address ?: $this->address;
+            }
+
+            $this->loadedFromCustomerProfile = true;
+            $this->profileLoadedMessage = 'Coordonnées pré-remplies directement depuis votre fiche client.';
+        }
+
+        // Pré-remplir le numéro Orange Money directement avec le numéro client
+        if (empty($this->orangeMoneyNumber) && !empty($this->phone) && $this->phone !== '+223 ') {
+            $this->orangeMoneyNumber = $this->phone;
+        }
+    }
+
+    public function updatedPhone(string $value): void
+    {
+        $cleanPhone = trim($value);
+
+        // Synchronisation directe du paiement Orange Money avec le numéro client
+        if (!$this->useDifferentPaymentNumber) {
+            $this->orangeMoneyNumber = $cleanPhone;
+        }
+
+        // Si le client n'est pas connecté et n'a pas encore saisi son nom/prénom,
+        // rechercher dans la base s'il a déjà une fiche client (dernière commande)
+        if (!auth()->check() && (empty($this->firstName) || empty($this->lastName))) {
+            $digits = preg_replace('/[^\d]/', '', $cleanPhone);
+            if (strlen($digits) >= 8) {
+                $previousOrder = Order::where(function ($q) use ($cleanPhone, $digits) {
+                    $q->where('customer_phone', $cleanPhone)
+                      ->orWhere('customer_phone', 'like', "%{$digits}%");
+                })
+                ->whereNotNull('customer_first_name')
+                ->latest()
+                ->first();
+
+                if ($previousOrder) {
+                    if (empty($this->firstName)) {
+                        $this->firstName = $previousOrder->customer_first_name;
+                    }
+                    if (empty($this->lastName)) {
+                        $this->lastName = $previousOrder->customer_last_name ?: '';
+                    }
+                    if (empty($this->email) && !empty($previousOrder->customer_email)) {
+                        $this->email = $previousOrder->customer_email;
+                    }
+                    if (empty($this->address) && !empty($previousOrder->address)) {
+                        $this->address = $previousOrder->address;
+                    }
+                    if (!empty($previousOrder->neighborhood)) {
+                        $this->neighborhood = $previousOrder->neighborhood;
+                    }
+                    $this->loadedFromCustomerProfile = true;
+                    $this->profileLoadedMessage = "Fiche client retrouvée ({$previousOrder->customer_first_name} {$previousOrder->customer_last_name}) : coordonnées appliquées.";
+                }
+            }
+        }
+    }
+
+    public function updatedUseDifferentPaymentNumber(bool $value): void
+    {
+        if (!$value) {
+            $this->orangeMoneyNumber = $this->phone;
+        } elseif (empty($this->orangeMoneyNumber) || $this->orangeMoneyNumber === $this->phone) {
+            $this->orangeMoneyNumber = '+223 ';
+        }
     }
 
     public function setPaymentMethod(string $method): void
@@ -80,7 +207,7 @@ class CheckoutForm extends Component
         }
 
         $this->paymentMethod = $method;
-        if ($method === 'orange_money' && empty($this->orangeMoneyNumber) && !empty($this->phone) && $this->phone !== '+223 ') {
+        if ($method === 'orange_money' && !$this->useDifferentPaymentNumber) {
             $this->orangeMoneyNumber = $this->phone;
         }
     }
@@ -97,6 +224,11 @@ class CheckoutForm extends Component
         // Si le panier est 100% digital, s'assurer que le mode de paiement n'est pas cash
         if (CartService::isPurelyDigital()) {
             $this->paymentMethod = 'orange_money';
+        }
+
+        // Si Orange Money avec numéro client par défaut, s'assurer que orangeMoneyNumber vaut le téléphone
+        if ($this->paymentMethod === 'orange_money' && (!$this->useDifferentPaymentNumber || empty($this->orangeMoneyNumber) || $this->orangeMoneyNumber === '+223 ')) {
+            $this->orangeMoneyNumber = $this->phone;
         }
 
         $this->validate();
