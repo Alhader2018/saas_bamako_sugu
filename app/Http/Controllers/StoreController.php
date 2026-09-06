@@ -95,13 +95,59 @@ class StoreController extends Controller
 
     public function show(string $slug)
     {
-        $product = Product::where('slug', $slug)->with('category')->firstOrFail();
+        $product = Product::where('slug', $slug)
+            ->with(['category', 'reviews.user'])
+            ->firstOrFail();
+
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->take(4)
             ->get();
 
         return view('store.product', compact('product', 'relatedProducts'));
+    }
+
+    public function storeReview(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'customer_name' => 'required|string|min:2|max:100',
+            'customer_email' => 'nullable|email|max:150',
+            'comment' => 'required|string|min:5|max:1000',
+        ], [
+            'rating.required' => 'Veuillez attribuer une note avec les étoiles.',
+            'rating.min' => 'La note minimum est de 1 étoile.',
+            'rating.max' => 'La note maximum est de 5 étoiles.',
+            'customer_name.required' => 'Votre nom est requis.',
+            'comment.required' => 'Veuillez saisir votre avis.',
+            'comment.min' => 'Votre commentaire doit contenir au moins 5 caractères.',
+        ]);
+
+        $isVerifiedPurchase = false;
+        $userId = auth()->id();
+        if ($userId) {
+            $isVerifiedPurchase = \App\Models\OrderItem::whereHas('order', function ($q) use ($userId) {
+                $q->where('user_id', $userId)->where('status', '!=', 'cancelled');
+            })->where('product_id', $product->id)->exists();
+        } elseif (!empty($validated['customer_email'])) {
+            $email = $validated['customer_email'];
+            $isVerifiedPurchase = \App\Models\OrderItem::whereHas('order', function ($q) use ($email) {
+                $q->where('customer_email', $email)->where('status', '!=', 'cancelled');
+            })->where('product_id', $product->id)->exists();
+        }
+
+        $product->allReviews()->create([
+            'user_id' => $userId,
+            'customer_name' => $validated['customer_name'],
+            'customer_email' => $validated['customer_email'] ?? (auth()->user()?->email),
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'],
+            'is_approved' => true,
+            'is_verified_purchase' => $isVerifiedPurchase,
+        ]);
+
+        return redirect()->to(route('product.show', $product->slug) . '#tab-reviews')
+            ->with('success', 'Merci ! Votre avis a été publié avec succès.');
     }
 
     public function checkout()

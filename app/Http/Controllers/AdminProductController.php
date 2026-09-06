@@ -264,4 +264,12 @@ class AdminProductController extends Controller
 
         return redirect()->back()->with('success', "Stock mis à jour pour {$product->name} ({$request->stock} unités).");
     }
+
+    public function destroyReview(\App\Models\ProductReview $review)
+    {
+        $reviewName = $review->customer_name;
+        $review->delete();
+
+        return redirect()->back()->with('success', "L'avis de \"{$reviewName}\" a été supprimé.");
+    }
 }

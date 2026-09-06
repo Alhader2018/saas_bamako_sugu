@@ -67,6 +67,7 @@ Route::get('/telechargements/{orderNumber}/{fileId}', [\App\Http\Controllers\Dig
 Route::get('/', [StoreController::class, 'index'])->name('home');
 Route::get('/catalogue', [StoreController::class, 'catalog'])->name('catalog');
 Route::get('/produit/{slug}', [StoreController::class, 'show'])->name('product.show');
+Route::post('/produit/{product}/avis', [StoreController::class, 'storeReview'])->name('product.review.store')->middleware('throttle:10,1');
 Route::get('/commander', [StoreController::class, 'checkout'])->middleware('throttle:checkout')->name('checkout');
 Route::post('/panier/acheter/{product}', [StoreController::class, 'buyNow'])->name('cart.buy-now');
 Route::post('/panier/ajouter/{product}', [StoreController::class, 'addToCart'])->name('cart.add');
@@ -101,6 +102,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(fun
     Route::put('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'update'])->name('products.update');
     Route::delete('/produits/{product}', [\App\Http\Controllers\AdminProductController::class, 'destroy'])->name('products.destroy');
     Route::delete('/produits-fichiers/{file}', [\App\Http\Controllers\AdminProductController::class, 'destroyFile'])->name('products.files.destroy');
+    Route::delete('/produits-avis/{review}', [\App\Http\Controllers\AdminProductController::class, 'destroyReview'])->name('products.reviews.destroy');
     Route::post('/produits/{product}/stock', [\App\Http\Controllers\AdminProductController::class, 'updateStock'])->name('products.stock');
 
     // Catégories (Categories)

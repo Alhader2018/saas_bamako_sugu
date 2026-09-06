@@ -71,6 +71,28 @@ class Product extends Model
         return $this->hasMany(ProductFile::class)->orderBy('sort_order');
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class)->where('is_approved', true)->latest();
+    }
+
+    public function allReviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class)->latest();
+    }
+
+    public function updateRatingStats(): void
+    {
+        $approvedReviews = $this->reviews();
+        $count = $approvedReviews->count();
+        $avg = $count > 0 ? round($approvedReviews->avg('rating'), 1) : 5.0;
+
+        $this->updateQuietly([
+            'reviews_count' => $count,
+            'rating' => $avg,
+        ]);
+    }
+
     public function isDigital(): bool
     {
         return ($this->product_type ?? 'physical') === 'digital';

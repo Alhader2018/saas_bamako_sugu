@@ -86,8 +86,16 @@
                         </div>
 
                         <div>
-                            <label class="block font-medium text-[#374151] mb-1">Description détaillée</label>
-                            <textarea name="description" rows="4" class="w-full p-3 bg-white border border-[#D1D5DB] rounded-md focus:border-[#E31E24] focus:outline-none">{{ old('description', $product->description) }}</textarea>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block font-medium text-[#374151]">Description détaillée (HTML WYSIWYG)</label>
+                                <span class="text-[11px] text-[#6B7280]">Éditeur visuel riche avec mise en forme</span>
+                            </div>
+                            <div class="border border-[#D1D5DB] rounded-md overflow-hidden bg-white">
+                                <div id="quill-editor" style="min-height: 180px;" class="text-sm">
+                                    {!! old('description', $product->description) !!}
+                                </div>
+                            </div>
+                            <input type="hidden" name="description" id="hidden-description" value="{{ old('description', $product->description) }}">
                         </div>
                     </div>
                 </div>
@@ -243,6 +251,58 @@
                     </div>
                 </div>
 
+                <!-- Avis & Commentaires Clients -->
+                <div class="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-[#ECECEC]">
+                        <div>
+                            <h2 class="text-sm font-semibold text-[#111111]">Avis & Commentaires Clients ({{ $product->allReviews->count() }})</h2>
+                            <p class="text-[11px] text-[#6B7280]">
+                                Note actuelle : <strong class="text-[#F7B500]">★ {{ number_format($product->rating, 1) }}/5</strong>
+                            </p>
+                        </div>
+                        <a href="{{ route('product.show', $product->slug) }}#tab-reviews" target="_blank" class="text-xs text-[#E31E24] hover:underline font-medium">
+                            Voir sur le site ↗
+                        </a>
+                    </div>
+
+                    @if($product->allReviews->isEmpty())
+                        <div class="py-6 text-center text-xs text-[#6B7280]">
+                            Aucun avis n'a encore été déposé pour ce produit.
+                        </div>
+                    @else
+                        <div class="divide-y divide-[#ECECEC] space-y-3">
+                            @foreach($product->allReviews as $review)
+                                <div class="pt-3 first:pt-0 flex items-start justify-between gap-3 text-xs">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-semibold text-[#111111]">{{ $review->customer_name }}</span>
+                                            <span class="text-[#F7B500] font-bold">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    {{ $i <= $review->rating ? '★' : '☆' }}
+                                                @endfor
+                                            </span>
+                                            @if($review->is_verified_purchase)
+                                                <span class="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.2 rounded border border-emerald-200">Achat vérifié</span>
+                                            @endif
+                                            <span class="text-[11px] text-[#9CA3AF]">{{ $review->created_at->format('d/m/Y H:i') }}</span>
+                                        </div>
+                                        <p class="text-[#4B5563] leading-relaxed">{{ $review->comment }}</p>
+                                    </div>
+
+                                    <button 
+                                        type="button" 
+                                        onclick="if(confirm('Supprimer cet avis client ?')) document.getElementById('delete-review-{{ $review->id }}').submit()"
+                                        class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 shrink-0 text-[11px] font-medium"
+                                        title="Supprimer cet avis"
+                                    >
+                                        Supprimer
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
             </div>
 
             <!-- COLONNE DROITE : Organisation & Visibilité -->
@@ -319,4 +379,64 @@
             @method('DELETE')
         </form>
     @endforeach
+
+    <!-- Formulaires de suppression des avis clients -->
+    @foreach($product->allReviews as $review)
+        <form id="delete-review-{{ $review->id }}" action="{{ route('admin.products.reviews.destroy', $review) }}" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endforeach
+
+    @push('styles')
+        <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+        <style>
+            .ql-toolbar.ql-snow {
+                border-top: none;
+                border-left: none;
+                border-right: none;
+                border-bottom: 1px solid #E5E7EB;
+                background-color: #F9FAFB;
+                border-top-left-radius: 0.375rem;
+                border-top-right-radius: 0.375rem;
+            }
+            .ql-container.ql-snow {
+                border: none;
+                font-family: inherit;
+                font-size: 13px;
+            }
+            .ql-editor {
+                min-height: 160px;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const quill = new Quill('#quill-editor', {
+                    theme: 'snow',
+                    placeholder: 'Rédigez ici la description détaillée du produit (titres, caractéristiques, avantages, sommaire...)...',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['blockquote', 'code-block'],
+                            ['link', 'clean']
+                        ]
+                    }
+                });
+
+                const form = document.querySelector('form');
+                const hiddenInput = document.getElementById('hidden-description');
+
+                form.addEventListener('submit', function () {
+                    const html = quill.root.innerHTML;
+                    hiddenInput.value = (html === '<p><br></p>' || html.trim() === '') ? '' : html;
+                });
+            });
+        </script>
+    @endpush
 </x-admin.layout>

@@ -80,8 +80,16 @@
                         </div>
 
                         <div>
-                            <label class="block font-medium text-[#374151] mb-1">Description détaillée</label>
-                            <textarea name="description" rows="4" placeholder="Description complète du contenu, programme, sommaire..." class="w-full p-3 bg-white border border-[#D1D5DB] rounded-md focus:border-[#E31E24] focus:outline-none">{{ old('description') }}</textarea>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block font-medium text-[#374151]">Description détaillée (HTML WYSIWYG)</label>
+                                <span class="text-[11px] text-[#6B7280]">Éditeur visuel riche avec mise en forme</span>
+                            </div>
+                            <div class="border border-[#D1D5DB] rounded-md overflow-hidden bg-white">
+                                <div id="quill-editor" style="min-height: 180px;" class="text-sm">
+                                    {!! old('description') !!}
+                                </div>
+                            </div>
+                            <input type="hidden" name="description" id="hidden-description" value="{{ old('description') }}">
                         </div>
                     </div>
                 </div>
@@ -283,4 +291,56 @@
             </div>
         </div>
     </form>
+
+    @push('styles')
+        <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+        <style>
+            .ql-toolbar.ql-snow {
+                border-top: none;
+                border-left: none;
+                border-right: none;
+                border-bottom: 1px solid #E5E7EB;
+                background-color: #F9FAFB;
+                border-top-left-radius: 0.375rem;
+                border-top-right-radius: 0.375rem;
+            }
+            .ql-container.ql-snow {
+                border: none;
+                font-family: inherit;
+                font-size: 13px;
+            }
+            .ql-editor {
+                min-height: 160px;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const quill = new Quill('#quill-editor', {
+                    theme: 'snow',
+                    placeholder: 'Rédigez ici la description détaillée du produit (titres, caractéristiques, avantages, sommaire...)...',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['blockquote', 'code-block'],
+                            ['link', 'clean']
+                        ]
+                    }
+                });
+
+                const form = document.querySelector('form');
+                const hiddenInput = document.getElementById('hidden-description');
+
+                form.addEventListener('submit', function () {
+                    const html = quill.root.innerHTML;
+                    hiddenInput.value = (html === '<p><br></p>' || html.trim() === '') ? '' : html;
+                });
+            });
+        </script>
+    @endpush
 </x-admin.layout>
